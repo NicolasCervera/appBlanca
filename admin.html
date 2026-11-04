@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Panel Secretario - Gestión & Recordatorios</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen font-sans pb-16">
+
+  <!-- HEADER -->
+  <header class="bg-slate-800 border-b border-slate-700 p-4 sticky top-0 z-20">
+    <div class="max-w-3xl mx-auto flex justify-between items-center">
+      <div>
+        <h1 class="text-base font-bold text-amber-400"><i class="fa-solid fa-clipboard-check mr-1"></i> Panel del Secretario</h1>
+        <p class="text-xs text-slate-400">Control de Pedidos, Despacho y Recordatorios WhatsApp</p>
+      </div>
+      <button onclick="cargarDatosAdmin()" class="bg-slate-700 hover:bg-slate-600 px-3 py-1.5 rounded-xl text-xs font-bold">
+        <i class="fa-solid fa-rotate mr-1"></i> Actualizar
+      </button>
+    </div>
+
+    <div class="max-w-3xl mx-auto mt-3 grid grid-cols-2 bg-slate-900 p-1 rounded-xl text-xs font-bold">
+      <button id="btnTabPedidos" onclick="switchAdminTab('pedidos')" class="py-2 rounded-lg bg-amber-500 text-slate-900">
+        📦 Pedidos del Día
+      </button>
+      <button id="btnTabRecordatorios" onclick="switchAdminTab('recordatorios')" class="py-2 rounded-lg text-slate-400">
+        📲 Recordar por WhatsApp
+      </button>
+    </div>
+  </header>
+
+  <main class="max-w-3xl mx-auto p-3">
+
+    <!-- VISTA 1: PEDIDOS -->
+    <section id="vistaPedidos" class="space-y-3">
+      <div id="contenedorPedidos" class="space-y-3">
+        <p class="text-center text-xs text-slate-400 py-8">Cargando pedidos...</p>
+      </div>
+    </section>
+
+    <!-- VISTA 2: DISPARADOR DE RECORDATORIOS WHATSAPP -->
+    <section id="vistaRecordatorios" class="hidden space-y-3">
+      <div class="bg-slate-800 border border-slate-700 p-3.5 rounded-2xl text-xs">
+        <p class="font-bold text-amber-400 mb-1"><i class="fa-brands fa-whatsapp mr-1"></i> Recordatorio rápido de pedidos</p>
+        <p class="text-slate-300">Tocá "Recordar Pedido" para enviarle a cada cliente su mensaje pre-armado con el link al catálogo.</p>
+      </div>
+      <div id="contenedorClientes" class="space-y-2.5"></div>
+    </section>
+
+  </main>
+
+  <!-- MODAL EDICIÓN DEL SECRETARIO -->
+  <div id="modalEditarSec" class="fixed inset-0 bg-black/75 z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-slate-800 border border-slate-700 w-full max-w-md rounded-2xl p-5 space-y-3 text-xs">
+      <div class="flex justify-between items-center">
+        <h3 class="font-bold text-sm text-amber-400">Editar Pedido <span id="secIdPedido"></span></h3>
+        <button onclick="cerrarModalSec()" class="text-slate-400 text-xl">&times;</button>
+      </div>
+      <div>
+        <label class="text-slate-400">Cliente</label>
+        <input id="secNombre" type="text" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 mt-1" />
+      </div>
+      <div>
+        <label class="text-slate-400">Dirección de Entrega</label>
+        <input id="secDireccion" type="text" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 mt-1" />
+      </div>
+      <div>
+        <label class="text-slate-400">Detalle del Pedido (cajones, calibres, cantidades)</label>
+        <textarea id="secDetalle" rows="3" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 mt-1"></textarea>
+      </div>
+      <div>
+        <label class="text-slate-400">Total ($)</label>
+        <input id="secTotal" type="number" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 mt-1" />
+      </div>
+      <button onclick="guardarEdicionSecretario()" class="w-full bg-amber-500 text-slate-900 font-bold py-2.5 rounded-xl mt-2">
+        Guardar Modificación
+      </button>
+    </div>
+  </div>
+
+  <script>
+    const API_URL = "URL_DE_TU_APPS_SCRIPT";
+    const URL_APP_CLIENTE = "https://tu-dominio-o-github-pages.com/index.html";
+    let pedidos = [];
+    let clientes = [];
+    let pedidoActualSec = null;
+
+    window.onload = cargarDatosAdmin;
+
+    async function cargarDatosAdmin() {
+      if (API_URL === "URL_DE_TU_APPS_SCRIPT") {
+        pedidos = [
+          { ID_Pedido: "PED-1042", Fecha_Hora: "Hoy 09:15", Nombre_Cliente: "Rotisería El Pollo Loco", Telefono_Cliente: "5493875112233", Direccion_Entrega: "Av. Belgrano 450", Detalle_Legible: "3x Cajón Pollo 20kg [Calibre 8]", Total: 144000, Estado: "Pendiente", Detalle_JSON: "[]" },
+          { ID_Pedido: "PED-1041", Fecha_Hora: "Hoy 08:30", Nombre_Cliente: "Carnicería Don Tito", Telefono_Cliente: "5493875445566", Direccion_Entrega: "San Martín 120", Detalle_Legible: "2x Cajón Pollo 20kg [Calibre 7] | 1x Suprema 5kg", Total: 126000, Estado: "Enviado", Detalle_JSON: "[]" }
+        ];
+        clientes = [
+          { ID_Cliente: "C01", Nombre_Comercio: "Rotisería El Pollo Loco", Nombre_Contacto: "Juan", Telefono_WhatsApp: "5493875112233", Pedido_Habitual: "3 cajones Calibre 8", Dias_Visita: "Lunes, Jueves" },
+          { ID_Cliente: "C02", Nombre_Comercio: "Despensa y Pollería Sur", Nombre_Contacto: "Marta", Telefono_WhatsApp: "5493875998877", Pedido_Habitual: "2 cajones Calibre 9", Dias_Visita: "Martes, Viernes" }
+        ];
+        renderPedidos();
+        renderClientes();
+        return;
+      }
+
+      const res = await fetch(`${API_URL}?action=admin_datos`);
+      const data = await res.json();
+      if (data.status === "ok") {
+        pedidos = data.pedidos;
+        clientes = data.clientes;
+        renderPedidos();
+        renderClientes();
+      }
+    }
+
+    function renderPedidos() {
+      const cont = document.getElementById("contenedorPedidos");
+      if (!pedidos.length) {
+        cont.innerHTML = `<p class="text-center text-xs text-slate-500 py-8">No hay pedidos registrados.</p>`;
+        return;
+      }
+
+      cont.innerHTML = pedidos.map(p => {
+        const esEnviado = p.Estado === "Enviado";
+        return `
+        <div class="bg-slate-800 border ${esEnviado ? 'border-green-700/60' : 'border-slate-700'} p-4 rounded-2xl space-y-2 text-xs">
+          <div class="flex justify-between items-center">
+            <div>
+              <span class="font-extrabold text-sm text-white">${p.ID_Pedido}</span>
+              <span class="text-slate-400 ml-2">${p.Fecha_Hora}</span>
+            </div>
+            <span class="px-2.5 py-1 rounded-full font-bold ${esEnviado ? 'bg-green-900 text-green-300' : 'bg-amber-500/20 text-amber-300'}">
+              ${esEnviado ? '🚚 ENVIADO (Bloqueado)' : '⏳ ' + p.Estado}
+            </span>
+          </div>
+
+          <p class="text-sm font-bold text-amber-400">${p.Nombre_Cliente} <span class="text-xs text-slate-400 font-normal">(${p.Telefono_Cliente})</span></p>
+          <p class="text-slate-300"><i class="fa-solid fa-location-dot mr-1 text-slate-400"></i> ${p.Direccion_Entrega}</p>
+          <div class="bg-slate-900 p-2.5 rounded-xl border border-slate-700 text-slate-200 font-medium">
+            ${p.Detalle_Legible}
+          </div>
+
+          <div class="flex justify-between items-center pt-2">
+            <span class="text-base font-extrabold text-white">$${Number(p.Total).toLocaleString('es-AR')}</span>
+            <div class="flex gap-2">
+              ${
+                !esEnviado
+                  ? `<button onclick='abrirEditarSec(${JSON.stringify(p).replace(/'/g, "&apos;")})' class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-xl font-bold">
+                      <i class="fa-solid fa-pen"></i> Editar
+                     </button>
+                     <button onclick="cambiarEstadoPedido('${p.ID_Pedido}', 'Enviado', '${p.Telefono_Cliente}', '${p.Nombre_Cliente}')" class="bg-green-600 hover:bg-green-500 text-white px-3 py-1.5 rounded-xl font-bold">
+                      <i class="fa-solid fa-truck"></i> Marcar Enviado
+                     </button>`
+                  : `<span class="text-[11px] text-slate-400 italic py-1.5">Edición deshabilitada (Ya enviado)</span>`
+              }
+            </div>
+          </div>
+        </div>`;
+      }).join("");
+    }
+
+    function renderClientes() {
+      const cont = document.getElementById("contenedorClientes");
+      cont.innerHTML = clientes.map(c => {
+        const msg = `¡Hola ${c.Nombre_Contacto} (${c.Nombre_Comercio})! 👋 Te escribimos de la distribuidora para recordarte el reparto de hoy. ¿Te preparamos tu pedido habitual (${c.Pedido_Habitual}) o querés encargar desde el catálogo?\n\n📲 Cargalo o modificalo acá: ${URL_APP_CLIENTE}`;
+        const urlWA = `https://wa.me/${String(c.Telefono_WhatsApp).replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`;
+        return `
+        <div class="bg-slate-800 border border-slate-700 p-3.5 rounded-2xl flex justify-between items-center text-xs">
+          <div>
+            <h3 class="font-bold text-sm text-white">${c.Nombre_Comercio}</h3>
+            <p class="text-slate-400">Contacto: ${c.Nombre_Contacto} • Días: ${c.Dias_Visita}</p>
+            <p class="text-amber-400 mt-1 font-semibold">Habitual: ${c.Pedido_Habitual}</p>
+          </div>
+          <a href="${urlWA}" target="_blank" class="bg-green-600 hover:bg-green-500 text-white font-bold px-3.5 py-2.5 rounded-xl flex items-center gap-1.5 whitespace-nowrap shadow">
+            <i class="fa-brands fa-whatsapp text-base"></i> Recordar
+          </a>
+        </div>`;
+      }).join("");
+    }
+
+    function abrirEditarSec(p) {
+      if (p.Estado === "Enviado") {
+        alert("Este pedido ya fue enviado y no se puede modificar.");
+        return;
+      }
+      pedidoActualSec = p;
+      document.getElementById("secIdPedido").innerText = p.ID_Pedido;
+      document.getElementById("secNombre").value = p.Nombre_Cliente;
+      document.getElementById("secDireccion").value = p.Direccion_Entrega;
+      document.getElementById("secDetalle").value = p.Detalle_Legible;
+      document.getElementById("secTotal").value = p.Total;
+      document.getElementById("modalEditarSec").classList.remove("hidden");
+    }
+
+    function cerrarModalSec() {
+      document.getElementById("modalEditarSec").classList.add("hidden");
+    }
+
+    async function guardarEdicionSecretario() {
+      if (!pedidoActualSec) return;
+      const payload = {
+        action: "modificar_pedido",
+        idPedido: pedidoActualSec.ID_Pedido,
+        autor: "Secretario",
+        nombre: document.getElementById("secNombre").value,
+        direccion: document.getElementById("secDireccion").value,
+        detalleLegible: document.getElementById("secDetalle").value,
+        items: JSON.parse(pedidoActualSec.Detalle_JSON || "[]"),
+        total: Number(document.getElementById("secTotal").value)
+      };
+
+      if (API_URL !== "URL_DE_TU_APPS_SCRIPT") {
+        const res = await fetch(API_URL, { method: "POST", body: JSON.stringify(payload) });
+        const data = await res.json();
+        if (data.status === "error") {
+          alert(data.message);
+          return;
+        }
+      } else {
+        pedidoActualSec.Nombre_Cliente = payload.nombre;
+        pedidoActualSec.Direccion_Entrega = payload.direccion;
+        pedidoActualSec.Detalle_Legible = payload.detalleLegible;
+        pedidoActualSec.Total = payload.total;
+      }
+
+      cerrarModalSec();
+      cargarDatosAdmin();
+    }
+
+    async function cambiarEstadoPedido(idPedido, nuevoEstado, telefono, nombre) {
+      if (!confirm(`¿Pasar el pedido ${idPedido} a ENVIADO? Una vez enviado, ni vos ni el cliente podrán editar las cantidades.`)) return;
+
+      if (API_URL !== "URL_DE_TU_APPS_SCRIPT") {
+        await fetch(API_URL, {
+          method: "POST",
+          body: JSON.stringify({ action: "cambiar_estado", idPedido, nuevoEstado })
+        });
+      } else {
+        const p = pedidos.find(x => x.ID_Pedido === idPedido);
+        if (p) p.Estado = nuevoEstado;
+      }
+
+      cargarDatosAdmin();
+
+      if (confirm("¿Querés avisarle por WhatsApp al cliente que su pedido ya salió a reparto?")) {
+        const msg = `🚚 ¡Hola ${nombre}! Tu pedido *${idPedido}* ya salió a reparto y está en camino.`;
+        window.open(`https://wa.me/${String(telefono).replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`, "_blank");
+      }
+    }
+
+    function switchAdminTab(tab) {
+      const esPed = tab === "pedidos";
+      document.getElementById("vistaPedidos").classList.toggle("hidden", !esPed);
+      document.getElementById("vistaRecordatorios").classList.toggle("hidden", esPed);
+      document.getElementById("btnTabPedidos").className = esPed ? "py-2 rounded-lg bg-amber-500 text-slate-900" : "py-2 rounded-lg text-slate-400";
+      document.getElementById("btnTabRecordatorios").className = !esPed ? "py-2 rounded-lg bg-amber-500 text-slate-900" : "py-2 rounded-lg text-slate-400";
+    }
+  </script>
+</body>
+</html>

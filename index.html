@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Pedidos Rápidos - Catálogo Digital</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <style>
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 pb-28 font-sans select-none">
+
+  <!-- HEADER -->
+  <header class="bg-amber-600 text-white p-4 sticky top-0 z-30 shadow-md">
+    <div class="max-w-md mx-auto flex justify-between items-center">
+      <div>
+        <h1 class="text-lg font-bold leading-tight"><i class="fa-solid fa-truck-fast mr-1"></i> Central de Pedidos</h1>
+        <p class="text-xs text-amber-100">Pollería • Carnicería • Panadería • Distribuidora</p>
+      </div>
+      <button onclick="toggleModalIA()" class="bg-white text-amber-700 px-3 py-1.5 rounded-full text-xs font-bold shadow flex items-center gap-1 active:scale-95 transition">
+        <i class="fa-solid fa-wand-magic-sparkles"></i> Consultar IA
+      </button>
+    </div>
+
+    <!-- TABS DE NAVEGACIÓN -->
+    <div class="max-w-md mx-auto mt-3 grid grid-cols-2 bg-amber-700/60 p-1 rounded-xl text-xs font-semibold">
+      <button id="tabCatalogo" onclick="cambiarTab('catalogo')" class="py-2 rounded-lg bg-white text-amber-800 shadow transition">
+        <i class="fa-solid fa-store mr-1"></i> Armar Pedido
+      </button>
+      <button id="tabModificar" onclick="cambiarTab('modificar')" class="py-2 rounded-lg text-amber-100 transition">
+        <i class="fa-solid fa-clock-rotate-left mr-1"></i> Mi Pedido / Repetir
+      </button>
+    </div>
+  </header>
+
+  <main class="max-w-md mx-auto p-3">
+
+    <!-- BANNER 1: REPETIR ÚLTIMO PEDIDO EN 1 CLIC (Aparece si el celular recuerda al cliente) -->
+    <div id="bannerRepetirRapido" class="hidden bg-emerald-50 border border-emerald-300 p-3 rounded-2xl mb-3 shadow-sm flex justify-between items-center text-xs">
+      <div class="pr-2">
+        <p class="font-bold text-emerald-900">
+          <i class="fa-solid fa-bolt text-amber-500 mr-1"></i> ¡Hola <span id="lblNombreRecordado"></span>!
+        </p>
+        <p class="text-emerald-700">¿Querés encargar lo mismo que la última vez?</p>
+      </div>
+      <button id="btnRepetirBanner" onclick="repetirDesdeMemoria()" class="bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white px-3 py-2 rounded-xl font-bold whitespace-nowrap shadow transition">
+        🔄 Repetir Pedido
+      </button>
+    </div>
+
+    <!-- BANNER 2: MODO EDICIÓN ACTIVO (Aparece cuando modifica un pedido que aún no fue enviado) -->
+    <div id="bannerEdicion" class="hidden bg-blue-600 text-white p-3 rounded-2xl mb-3 shadow flex justify-between items-center text-xs">
+      <div>
+        <p class="font-bold">✏️ Editando Pedido: <span id="lblIdEdicion"></span></p>
+        <p class="text-blue-100">Cambiá las cantidades y tocá "Guardar Cambios".</p>
+      </div>
+      <button onclick="cancelarModoEdicion()" class="bg-blue-800 hover:bg-blue-900 px-3 py-1.5 rounded-xl font-bold">
+        Salir
+      </button>
+    </div>
+
+    <!-- SECCIÓN 1: CATÁLOGO DE PRODUCTOS -->
+    <section id="secCatalogo">
+      <!-- Filtro de Rubros -->
+      <div id="filtrosRubro" class="flex gap-2 overflow-x-auto pb-2 mb-3 no-scrollbar text-xs font-semibold">
+        <button onclick="filtrarRubro('Todos', this)" class="rubro-btn bg-amber-600 text-white px-3.5 py-1.5 rounded-full whitespace-nowrap shadow-sm">Todos</button>
+        <button onclick="filtrarRubro('Pollería', this)" class="rubro-btn bg-white text-slate-700 px-3.5 py-1.5 rounded-full whitespace-nowrap border">🐔 Pollería</button>
+        <button onclick="filtrarRubro('Carnicería', this)" class="rubro-btn bg-white text-slate-700 px-3.5 py-1.5 rounded-full whitespace-nowrap border">🥩 Carnicería</button>
+        <button onclick="filtrarRubro('Panadería', this)" class="rubro-btn bg-white text-slate-700 px-3.5 py-1.5 rounded-full whitespace-nowrap border">🥖 Panadería</button>
+        <button onclick="filtrarRubro('Distribuidora', this)" class="rubro-btn bg-white text-slate-700 px-3.5 py-1.5 rounded-full whitespace-nowrap border">📦 Distribuidora</button>
+      </div>
+
+      <!-- Lista de Productos -->
+      <div id="listaProductos" class="space-y-2.5">
+        <p class="text-center text-sm text-slate-500 py-8">
+          <i class="fa-solid fa-spinner fa-spin mr-2"></i>Cargando catálogo actualizado...
+        </p>
+      </div>
+    </section>
+
+    <!-- SECCIÓN 2: BUSCAR, MODIFICAR O REPETIR PEDIDO -->
+    <section id="secModificar" class="hidden">
+      <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
+        <h2 class="font-bold text-sm mb-1">Buscá tu pedido anterior o en curso</h2>
+        <p class="text-xs text-slate-500 mb-3">
+          Ingresá tu WhatsApp o código de pedido (ej. <span class="font-mono font-semibold">PED-1042</span>). Podés repetirlo con precios de hoy o modificarlo si aún no salió el reparto.
+        </p>
+        <div class="flex gap-2">
+          <input id="inputBuscarPedido" type="text" placeholder="Ej: 3875112233 o PED-1042" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-amber-600" onkeypress="if(event.key==='Enter') buscarPedidoCliente()" />
+          <button onclick="buscarPedidoCliente()" class="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-xl text-sm font-bold shadow">
+            Buscar
+          </button>
+        </div>
+      </div>
+
+      <div id="resultadoPedido" class="mt-3"></div>
+    </section>
+
+  </main>
+
+  <!-- BARRA INFERIOR FLOTANTE DEL CARRITO -->
+  <div id="barraCarrito" class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-3 shadow-2xl z-20 hidden">
+    <div class="max-w-md mx-auto flex justify-between items-center">
+      <div>
+        <p class="text-xs text-slate-500"><span id="cantItems">0</span> bultos / unidades</p>
+        <p class="text-lg font-extrabold text-slate-900">$<span id="totalCarrito">0</span></p>
+      </div>
+      <button onclick="abrirModalCheckout()" id="btnAccionPrincipal" class="bg-green-600 hover:bg-green-700 active:scale-95 text-white font-bold px-5 py-3 rounded-xl text-sm shadow-lg flex items-center gap-2 transition">
+        <span>Confirmar Pedido</span> <i class="fa-brands fa-whatsapp text-lg"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- MODAL CHECKOUT / DATOS DE ENTREGA -->
+  <div id="modalCheckout" class="fixed inset-0 bg-black/60 z-40 hidden flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="bg-white w-full max-w-md rounded-t-3xl sm:rounded-2xl p-5 max-h-[90vh] overflow-y-auto shadow-2xl">
+      <div class="flex justify-between items-center mb-3">
+        <h3 class="font-bold text-base text-slate-800" id="tituloCheckout">Confirmar Datos de Entrega</h3>
+        <button onclick="cerrarModalCheckout()" class="text-slate-400 hover:text-slate-600 text-2xl leading-none">&times;</button>
+      </div>
+
+      <div id="resumenItemsModal" class="bg-slate-50 p-3 rounded-xl text-xs space-y-1.5 mb-4 max-h-40 overflow-y-auto border border-slate-200"></div>
+
+      <div class="space-y-3 text-sm">
+        <div>
+          <label class="text-xs font-semibold text-slate-600">Nombre o Comercio *</label>
+          <input id="cliNombre" type="text" placeholder="Ej: Rotisería San José / Juan" class="w-full border border-slate-300 rounded-xl px-3 py-2 mt-1 focus:outline-none focus:border-amber-600" />
+        </div>
+        <div>
+          <label class="text-xs font-semibold text-slate-600">Tu WhatsApp (sin 0 ni 15) *</label>
+          <input id="cliTelefono" type="tel" placeholder="Ej: 3875123456" class="w-full border border-slate-300 rounded-xl px-3 py-2 mt-1 focus:outline-none focus:border-amber-600" />
+        </div>
+        <div>
+          <label class="text-xs font-semibold text-slate-600">Dirección de Entrega / Referencia *</label>
+          <input id="cliDireccion" type="text" placeholder="Calle, número, barrio o franja horaria" class="w-full border border-slate-300 rounded-xl px-3 py-2 mt-1 focus:outline-none focus:border-amber-600" />
+        </div>
+      </div>
+
+      <button id="btnEnviarServidor" onclick="procesarPedido()" class="w-full mt-5 bg-green-600 hover:bg-green-700 text-white font-bold py-3.5 rounded-xl text-sm shadow-md flex justify-center items-center gap-2">
+        <i class="fa-brands fa-whatsapp text-base"></i> <span>Enviar y Avisar por WhatsApp</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- MODAL ASISTENTE IA -->
+  <div id="modalIA" class="fixed inset-0 bg-black/60 z-50 hidden flex items-end sm:items-center justify-center">
+    <div class="bg-white w-full max-w-md rounded-t-3xl sm:rounded-2xl p-4 h-[75vh] flex flex-col shadow-2xl">
+      <div class="flex justify-between items-center border-b pb-2.5">
+        <div class="flex items-center gap-2">
+          <span class="bg-amber-100 text-amber-700 p-2 rounded-full"><i class="fa-solid fa-robot"></i></span>
+          <div>
+            <h3 class="font-bold text-sm">Asistente Inteligente</h3>
+            <p class="text-[11px] text-slate-500">Consultá calibres, precios por cajón o entregas</p>
+          </div>
+        </div>
+        <button onclick="toggleModalIA()" class="text-slate-400 text-2xl px-2 leading-none">&times;</button>
+      </div>
+
+      <div id="chatMensajes" class="flex-1 overflow-y-auto py-3 space-y-2.5 text-xs">
+        <div class="bg-slate-100 text-slate-800 p-3 rounded-2xl rounded-tl-none max-w-[85%]">
+          ¡Hola! 👋 Soy el asistente de la distribuidora. Preguntame qué calibre de cajón te conviene según tu negocio, precios del día o cómo modificar tu pedido.
+        </div>
+      </div>
+
+      <div class="flex gap-2 pt-2 border-t">
+        <input id="inputPreguntaIA" type="text" placeholder="Ej: ¿Qué calibre conviene para spiedo?" class="flex-1 border border-slate-300 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-amber-600" onkeypress="if(event.key==='Enter') enviarPreguntaIA()" />
+        <button onclick="enviarPreguntaIA()" class="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-xl text-xs font-bold">
+          <i class="fa-solid fa-paper-plane"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // REEMPLAZAR POR LA URL DE TU IMPLEMENTACIÓN DE GOOGLE APPS SCRIPT
+    const API_URL = "URL_DE_TU_APPS_SCRIPT";
+
+    let catalogo = [];
+    let carrito = {}; // Estructura: { ID_Producto: { ...producto, cantidad } }
+    let whatsappEmpresa = "5493875000000";
+    let pedidoEnEdicion = null; // Guarda el ID_Pedido cuando el cliente edita uno no enviado
+    let rubroSeleccionado = "Todos";
+
+    window.addEventListener("DOMContentLoaded", async () => {
+      await cargarCatalogo();
+      verificarMemoriaCliente();
+    });
+
+    // Verifica si el celular ya tiene guardados los datos del cliente
+    function verificarMemoriaCliente() {
+      const telGuardado = localStorage.getItem("cli_telefono");
+      const nomGuardado = localStorage.getItem("cli_nombre");
+      const dirGuardada = localStorage.getItem("cli_direccion");
+
+      if (nomGuardado) document.getElementById("cliNombre").value = nomGuardado;
+      if (telGuardado) document.getElementById("cliTelefono").value = telGuardado;
+      if (dirGuardada) document.getElementById("cliDireccion").value = dirGuardada;
+
+      if (telGuardado && nomGuardado) {
+        document.getElementById("lblNombreRecordado").innerText = nomGuardado;
+        document.getElementById("bannerRepetirRapido").classList.remove("hidden");
+        document.getElementById("inputBuscarPedido").value = telGuardado;
+      }
+    }
+
+    function recordarClienteEnCelular(nombre, telefono, direccion) {
+      localStorage.setItem("cli_nombre", nombre);
+      localStorage.setItem("cli_telefono", telefono);
+      localStorage.setItem("cli_direccion", direccion);
+      verificarMemoriaCliente();
+    }
+
+    // 1. CARGAR CATÁLOGO DESDE APPS SCRIPT (O MODO DEMO SI NO HAY URL)
+    async function cargarCatalogo() {
+      if (API_URL === "URL_DE_TU_APPS_SCRIPT") {
+        catalogo = [
+          { ID_Producto: "P01", Rubro: "Pollería", Nombre: "Cajón de Pollo 20kg", Calibre_Variante: "Calibre 8 (Rotisería / Spiedo)", Precio: 48000, Stock_Disponible: 25 },
+          { ID_Producto: "P02", Rubro: "Pollería", Nombre: "Cajón de Pollo 20kg", Calibre_Variante: "Calibre 7 (Grande / Trozar)", Precio: 49500, Stock_Disponible: 18 },
+          { ID_Producto: "P03", Rubro: "Pollería", Nombre: "Suprema de Pollo", Calibre_Variante: "Bandeja x 5kg", Precio: 27000, Stock_Disponible: 12 },
+          { ID_Producto: "P04", Rubro: "Pollería", Nombre: "Pata Muslo Fresca", Calibre_Variante: "Cajón x 15kg", Precio: 34500, Stock_Disponible: 20 },
+          { ID_Producto: "C01", Rubro: "Carnicería", Nombre: "Media Res Novillito", Calibre_Variante: "Aprox 95kg - Precio x Kg", Precio: 6800, Stock_Disponible: 10 },
+          { ID_Producto: "C02", Rubro: "Carnicería", Nombre: "Costillar Vacuno Especial", Calibre_Variante: "Manta x 12kg aprox", Precio: 89000, Stock_Disponible: 8 },
+          { ID_Producto: "PA1", Rubro: "Panadería", Nombre: "Harina 000 Panadera", Calibre_Variante: "Bolsa x 25kg", Precio: 16500, Stock_Disponible: 40 },
+          { ID_Producto: "PA2", Rubro: "Panadería", Nombre: "Grasa Bovina Refinada", Calibre_Variante: "Caja x 20kg", Precio: 31000, Stock_Disponible: 15 },
+          { ID_Producto: "D01", Rubro: "Distribuidora", Nombre: "Aceite Girasol Mayorista", Calibre_Variante: "Pack 15 x 900ml", Precio: 24000, Stock_Disponible: 30 },
+          { ID_Producto: "D02", Rubro: "Distribuidora", Nombre: "Maple de Huevos Seleccionados", Calibre_Variante: "Cajón x 12 Maples (360 u.)", Precio: 54000, Stock_Disponible: 14 }
+        ];
+        renderProductos();
+        return;
+      }
+
+      try {
+        const res = await fetch(`${API_URL}?action=catalogo`);
+        const data = await res.json();
+        if (data.status === "ok") {
+          catalogo = data.productos;
+          whatsappEmpresa = data.whatsappEmpresa || whatsappEmpresa;
+          renderProductos();
+        }
+      } catch (e) {
+        document.getElementById("listaProductos").innerHTML = `<p class="text-center text-red-500 text-xs py-6">Error al conectar con el catálogo. Verificá tu conexión.</p>`;
+      }
+    }
+
+    function renderProductos() {
+      const cont = document.getElementById("listaProductos");
+      const lista = rubroSeleccionado === "Todos" 
+        ? catalogo 
+        : catalogo.filter(p => p.Rubro === rubroSeleccionado);
+
+      if (!lista.length) {
+        cont.innerHTML = `<p class="text-center text-xs text-slate-400 py-8">No hay productos cargados en este rubro.</p>`;
+        return;
+      }
+
+      cont.innerHTML = lista.map(p => {
+        const cant = carrito[p.ID_Producto] ? carrito[p.ID_Producto].cantidad : 0;
+        return `
+        <div class="bg-white p-3.5 rounded-2xl shadow-sm border ${cant > 0 ? 'border-amber-500 ring-1 ring-amber-400' : 'border-slate-200'} flex justify-between items-center transition">
+          <div class="pr-2">
+            <span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">${p.Rubro}</span>
+            <h3 class="font-bold text-sm text-slate-800 mt-1">${p.Nombre}</h3>
+            <p class="text-xs text-slate-500 font-medium">📌 ${p.Calibre_Variante}</p>
+            <p class="text-sm font-extrabold text-amber-700 mt-1">$${Number(p.Precio).toLocaleString('es-AR')}</p>
+          </div>
+          <div class="flex items-center gap-2 bg-slate-100 rounded-xl p-1">
+            <button onclick="cambiarCantidad('${p.ID_Producto}', -1)" class="w-8 h-8 rounded-lg bg-white shadow text-slate-700 font-bold text-base active:scale-90 transition">-</button>
+            <span id="cant-${p.ID_Producto}" class="w-6 text-center font-bold text-sm">${cant}</span>
+            <button onclick="cambiarCantidad('${p.ID_Producto}', 1)" class="w-8 h-8 rounded-lg bg-amber-600 shadow text-white font-bold text-base active:scale-90 transition">+</button>
+          </div>
+        </div>`;
+      }).join("");
+    }
+
+    function filtrarRubro(rubro, btnElemento) {
+      rubroSeleccionado = rubro;
+      document.querySelectorAll(".rubro-btn").forEach(b => {
+        b.className = "rubro-btn bg-white text-slate-700 px-3.5 py-1.5 rounded-full whitespace-nowrap border";
+      });
+      if (btnElemento) {
+        btnElemento.className = "rubro-btn bg-amber-600 text-white px-3.5 py-1.5 rounded-full whitespace-nowrap shadow-sm";
+      }
+      renderProductos();
+    }
+
+    function cambiarCantidad(idProd, delta) {
+      const prod = catalogo.find(p => p.ID_Producto === idProd);
+      if (!prod) return;
+
+      if (!carrito[idProd]) carrito[idProd] = { ...prod, cantidad: 0 };
+      carrito[idProd].cantidad += delta;
+
+      if (carrito[idProd].cantidad <= 0) {
+        delete carrito[idProd];
+      }
+
+      renderProductos();
+      actualizarBarraCarrito();
+    }
+
+    function actualizarBarraCarrito() {
+      const items = Object.values(carrito);
+      const totalCant = items.reduce((acc, i) => acc + i.cantidad, 0);
+      const totalPrecio = items.reduce((acc, i) => acc + (i.cantidad * Number(i.Precio)), 0);
+
+      const barra = document.getElementById("barraCarrito");
+      if (totalCant > 0) {
+        barra.classList.remove("hidden");
+        document.getElementById("cantItems").innerText = totalCant;
+        document.getElementById("totalCarrito").innerText = totalPrecio.toLocaleString('es-AR');
+        document.getElementById("btnAccionPrincipal").innerHTML = pedidoEnEdicion 
+          ? `<span>Guardar Cambios (${pedidoEnEdicion})</span> <i class="fa-solid fa-floppy-disk"></i>`
+          : `<span>Confirmar Pedido</span> <i class="fa-brands fa-whatsapp text-lg"></i>`;
+      } else {
+        barra.classList.add("hidden");
+      }
+    }
+
+    function cambiarTab(tab) {
+      const esCat = tab === "catalogo";
+      document.getElementById("secCatalogo").classList.toggle("hidden", !esCat);
+      document.getElementById("secModificar").classList.toggle("hidden", esCat);
+      document.getElementById("tabCatalogo").className = esCat 
+        ? "py-2 rounded-lg bg-white text-amber-800 shadow transition" 
+        : "py-2 rounded-lg text-amber-100 transition";
+      document.getElementById("tabModificar").className = !esCat 
+        ? "py-2 rounded-lg bg-white text-amber-800 shadow transition" 
+        : "py-2 rounded-lg text-amber-100 transition";
+    }
+
+    function abrirModalCheckout() {
+      const items = Object.values(carrito);
+      if (!items.length) return;
+
+      const total = items.reduce((acc, i) => acc + (i.cantidad * Number(i.Precio)), 0);
+      const resumenHTML = items.map(i => `
+        <div class="flex justify-between items-center border-b border-slate-200/60 pb-1">
+          <span><b>${i.cantidad}x</b> ${i.Nombre} <span class="text-slate-500">(${i.Calibre_Variante})</span></span>
+          <span class="font-bold">$${(i.cantidad * i.Precio).toLocaleString('es-AR')}</span>
+        </div>
+      `).join("") + `
+        <div class="flex justify-between items-center pt-1 font-extrabold text-slate-900 text-sm">
+          <span>Total a Pagar:</span>
+          <span>$${total.toLocaleString('es-AR')}</span>
+        </div>
+      `;
+
+      document.getElementById("resumenItemsModal").innerHTML = resumenHTML;
+      document.getElementById("tituloCheckout").innerText = pedidoEnEdicion 
+        ? `Guardar Cambios en ${pedidoEnEdicion}` 
+        : "Confirmar Datos de Entrega";
+      document.getElementById("modalCheckout").classList.remove("hidden");
+    }
+
+    function cerrarModalCheckout() {
+      document.getElementById("modalCheckout").classList.add("hidden");
+    }
+
+    // 2. ENVIAR PEDIDO NUEVO O GUARDAR MODIFICACIÓN (SI NO FUE ENVIADO)
+    async function procesarPedido() {
+      const nombre = document.getElementById("cliNombre").value.trim();
+      const telefono = document.getElementById("cliTelefono").value.trim();
+      const direccion = document.getElementById("cliDireccion").value.trim();
+
+      if (!nombre || !telefono || !direccion) {
+        alert("Por favor completá tu Nombre/Comercio, WhatsApp y Dirección.");
+        return;
+      }
+
+      const items = Object.values(carrito);
+      const total = items.reduce((acc, i) => acc + (i.cantidad * Number(i.Precio)), 0);
+      const detalleLegible = items.map(i => `${i.cantidad}x ${i.Nombre} [${i.Calibre_Variante}]`).join(" | ");
+
+      // Guardamos en el celular para futuras compras en 1 clic y un último backup de productos
+      recordarClienteEnCelular(nombre, telefono, direccion);
+      localStorage.setItem("cli_ultimo_json", JSON.stringify(items));
+
+      const payload = {
+        action: pedidoEnEdicion ? "modificar_pedido" : "crear_pedido",
+        idPedido: pedidoEnEdicion,
+        autor: "Cliente",
+        nombre,
+        telefono,
+        direccion,
+        items,
+        detalleLegible,
+        total
+      };
+
+      const btn = document.getElementById("btnEnviarServidor");
+      btn.disabled = true;
+      btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> <span>Guardando pedido...</span>`;
+
+      let idFinal = pedidoEnEdicion || "PED-" + Math.floor(1000 + Math.random() * 9000);
+
+      if (API_URL !== "URL_DE_TU_APPS_SCRIPT") {
+        try {
+          const res = await fetch(API_URL, { method: "POST", body: JSON.stringify(payload) });
+          const data = await res.json();
+          if (data.status === "error") {
+            alert(data.message);
+            btn.disabled = false;
+            btn.innerHTML = `<i class="fa-brands fa-whatsapp text-base"></i> <span>Enviar y Avisar por WhatsApp</span>`;
+            return;
+          }
+          if (data.idPedido) idFinal = data.idPedido;
+        } catch (err) {
+          alert("Error de conexión al guardar el pedido. Intentá nuevamente.");
+          btn.disabled = false;
+          btn.innerHTML = `<i class="fa-brands fa-whatsapp text-base"></i> <span>Enviar y Avisar por WhatsApp</span>`;
+          return;
+        }
+      }
+
+      const encabezado = pedidoEnEdicion ? `✏️ *PEDIDO MODIFICADO (${idFinal})*` : `🐔 *NUEVO PEDIDO (${idFinal})*`;
+      const textoWA = `${encabezado}\n👤 *Cliente:* ${nombre}\n📍 *Entrega:* ${direccion}\n\n*Detalle del Pedido:*\n` +
+        items.map(i => `• ${i.cantidad}x ${i.Nombre} (${i.Calibre_Variante})`).join("\n") +
+        `\n\n💰 *Total Estimado:* $${total.toLocaleString('es-AR')}`;
+
+      window.open(`https://wa.me/${whatsappEmpresa}?text=${encodeURIComponent(textoWA)}`, "_blank");
+
+      carrito = {};
+      cancelarModoEdicion();
+      cerrarModalCheckout();
+      renderProductos();
+      actualizarBarraCarrito();
+      btn.disabled = false;
+      btn.innerHTML = `<i class="fa-brands fa-whatsapp text-base"></i> <span>Enviar y Avisar por WhatsApp</span>`;
+    }
+
+    // 3. BUSCAR PEDIDO POR WHATSAPP O CÓDIGO (PARA EDITAR O REPETIR)
+    async function buscarPedidoCliente() {
+      const q = document.getElementById("inputBuscarPedido").value.trim();
+      if (!q) {
+        alert("Ingresá tu número de WhatsApp o el código de pedido.");
+        return;
+      }
+
+      const cont = document.getElementById("resultadoPedido");
+      cont.innerHTML = `<p class="text-xs text-slate-500 text-center py-6"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Buscando tu último pedido...</p>`;
+
+      // MODO DEMO SI AÚN NO CONECTASTE LA URL DE APPS SCRIPT
+      if (API_URL === "URL_DE_TU_APPS_SCRIPT") {
+        const itemsGuardadosLocal = localStorage.getItem("cli_ultimo_json");
+        const demoItems = itemsGuardadosLocal ? JSON.parse(itemsGuardadosLocal) : [
+          { ID_Producto: "P01", Nombre: "Cajón de Pollo 20kg", Calibre_Variante: "Calibre 8 (Rotisería / Spiedo)", Precio: 48000, cantidad: 2 },
+          { ID_Producto: "P03", Nombre: "Suprema de Pollo", Calibre_Variante: "Bandeja x 5kg", Precio: 27000, cantidad: 1 }
+        ];
+
+        const pedidoDemo = {
+          ID_Pedido: "PED-1042",
+          Fecha_Hora: "Último registrado",
+          Nombre_Cliente: localStorage.getItem("cli_nombre") || "Rotisería El Pollo Loco",
+          Telefono_Cliente: q,
+          Direccion_Entrega: localStorage.getItem("cli_direccion") || "Av. Belgrano 450",
+          Detalle_Legible: demoItems.map(i => `${i.cantidad}x ${i.Nombre} [${i.Calibre_Variante}]`).join(" | "),
+          Detalle_JSON: JSON.stringify(demoItems),
+          Total: demoItems.reduce((a, b) => a + (b.cantidad * b.Precio), 0),
+          Estado: "Pendiente" // En demo lo dejamos "Pendiente" para que puedas probar tanto Repetir como Modificar
+        };
+        mostrarTarjetaUltimoPedido(pedidoDemo);
+        return;
+      }
+
+      try {
+        const res = await fetch(`${API_URL}?action=buscar_pedido&query=${encodeURIComponent(q)}`);
+        const data = await res.json();
+
+        if (data.status !== "ok") {
+          cont.innerHTML = `<div class="bg-red-50 border border-red-200 text-red-700 p-3.5 rounded-2xl text-xs font-semibold">${data.message}</div>`;
+          return;
+        }
+        mostrarTarjetaUltimoPedido(data.pedido);
+      } catch (e) {
+        cont.innerHTML = `<div class="bg-red-50 text-red-700 p-3.5 rounded-2xl text-xs">Error al consultar el servidor.</div>`;
+      }
+    }
+
+    function mostrarTarjetaUltimoPedido(p) {
+      const cont = document.getElementById("resultadoPedido");
+      const bloqueado = p.Estado === "Enviado";
+      const jsonSeguro = JSON.stringify(p).replace(/'/g, "&apos;");
+
+      cont.innerHTML = `
+        <div class="bg-white p-4 rounded-2xl shadow border border-slate-200 space-y-2.5 text-xs">
+          <div class="flex justify-between items-center border-b pb-2">
+            <div>
+              <span class="font-extrabold text-sm text-slate-800">${p.ID_Pedido}</span>
+              <span class="text-[11px] text-slate-400 ml-1">(${p.Fecha_Hora || 'Reciente'})</span>
+            </div>
+            <span class="px-2.5 py-1 rounded-full font-bold ${bloqueado ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'}">
+              ${bloqueado ? '🚚 ENVIADO' : '⏳ ' + p.Estado}
+            </span>
+          </div>
+
+          <p><b>Cliente:</b> ${p.Nombre_Cliente}</p>
+          <p><b>Entrega en:</b> ${p.Direccion_Entrega}</p>
+          <div class="bg-slate-50 p-2.5 rounded-xl border text-slate-700">
+            <b>Detalle encargado:</b><br>${p.Detalle_Legible}
+          </div>
+          <p class="text-sm font-extrabold text-amber-700">Total registrado: $${Number(p.Total).toLocaleString('es-AR')}</p>
+
+          <div class="pt-2 space-y-2">
+            <!-- OPCIÓN 1: REPETIR COMO PEDIDO NUEVO (Actualiza precios al catálogo de hoy) -->
+            <button onclick='repetirUltimoPedido(${jsonSeguro})' class="w-full bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold py-3 rounded-xl shadow flex justify-center items-center gap-2 text-sm transition">
+              <i class="fa-solid fa-rotate-right"></i> Repetir este Pedido para Hoy
+            </button>
+
+            <!-- OPCIÓN 2: MODIFICAR EL PEDIDO EN CURSO (Solo habilitado si NO fue enviado) -->
+            ${
+              bloqueado
+                ? `<div class="bg-red-50 border border-red-200 text-red-700 p-2.5 rounded-xl font-semibold text-center">
+                    ⛔ Este pedido ya salió a reparto y no puede modificarse. Si necesitás más mercadería, tocá "Repetir" para armar uno nuevo.
+                   </div>`
+                : `<button onclick='cargarPedidoParaEditar(${jsonSeguro})' class="w-full bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-bold py-2.5 rounded-xl shadow flex justify-center items-center gap-2 transition">
+                    <i class="fa-solid fa-pen-to-square"></i> Modificar este pedido en curso (${p.ID_Pedido})
+                  </button>`
+            }
+          </div>
+        </div>`;
+    }
+
+    // 4. REPETIR ÚLTIMO PEDIDO (Crea uno nuevo hoy con los precios actualizados del catálogo)
+    function repetirUltimoPedido(p) {
+      cancelarModoEdicion(); // Nos aseguramos de que cree un pedido nuevo y no pise uno viejo
+
+      document.getElementById("cliNombre").value = p.Nombre_Cliente || "";
+      document.getElementById("cliTelefono").value = p.Telefono_Cliente || "";
+      document.getElementById("cliDireccion").value = p.Direccion_Entrega || "";
+      recordarClienteEnCelular(p.Nombre_Cliente, p.Telefono_Cliente, p.Direccion_Entrega);
+
+      carrito = {};
+      let sinStock = [];
+
+      try {
+        const itemsAnteriores = JSON.parse(p.Detalle_JSON || "[]");
+        itemsAnteriores.forEach(itemViejo => {
+          // Buscamos el producto en el catálogo en vivo para aplicar el precio de hoy
+          const prodActual = catalogo.find(c => c.ID_Producto === itemViejo.ID_Producto);
+          if (prodActual) {
+            carrito[prodActual.ID_Producto] = {
+              ...prodActual,
+              cantidad: Number(itemViejo.cantidad) || 1
+            };
+          } else {
+            sinStock.push(itemViejo.Nombre);
+          }
+        });
+      } catch (e) {
+        alert("No se pudo recuperar el detalle del pedido anterior.");
+        return;
+      }
+
+      if (sinStock.length > 0) {
+        alert("Aviso: Algunos productos de tu pedido anterior hoy no están en stock: " + sinStock.join(", "));
+      }
+
+      cambiarTab("catalogo");
+      renderProductos();
+      actualizarBarraCarrito();
+      abrirModalCheckout();
+    }
+
+    // Botón del Banner Verde Superior: busca el último pedido del teléfono guardado y lo carga directo al checkout
+    async function repetirDesdeMemoria() {
+      const tel = localStorage.getItem("cli_telefono");
+      if (!tel) return;
+
+      const btn = document.getElementById("btnRepetirBanner");
+      const textoOriginal = btn.innerHTML;
+      btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Cargando...`;
+
+      // Si estamos en modo Demo o tenemos backup en el teléfono y aún no hay URL de Apps Script
+      if (API_URL === "URL_DE_TU_APPS_SCRIPT") {
+        const itemsLocal = localStorage.getItem("cli_ultimo_json");
+        const pedidoLocal = {
+          Nombre_Cliente: localStorage.getItem("cli_nombre"),
+          Telefono_Cliente: tel,
+          Direccion_Entrega: localStorage.getItem("cli_direccion"),
+          Detalle_JSON: itemsLocal || JSON.stringify([
+            { ID_Producto: "P01", Nombre: "Cajón de Pollo 20kg", Calibre_Variante: "Calibre 8 (Rotisería / Spiedo)", Precio: 48000, cantidad: 2 }
+          ])
+        };
+        btn.innerHTML = textoOriginal;
+        repetirUltimoPedido(pedidoLocal);
+        return;
+      }
+
+      try {
+        const res = await fetch(`${API_URL}?action=buscar_pedido&query=${encodeURIComponent(tel)}`);
+        const data = await res.json();
+        btn.innerHTML = textoOriginal;
+
+        if (data.status === "ok" && data.pedido) {
+          repetirUltimoPedido(data.pedido);
+        } else {
+          cambiarTab("modificar");
+          buscarPedidoCliente();
+        }
+      } catch (e) {
+        btn.innerHTML = textoOriginal;
+        cambiarTab("modificar");
+      }
+    }
+
+    // 5. CARGAR PEDIDO EN CURSO PARA MODIFICAR (Solo si Estado !== "Enviado")
+    function cargarPedidoParaEditar(p) {
+      if (p.Estado === "Enviado") {
+        alert("⛔ Este pedido ya salió a reparto y no puede ser modificado.");
+        return;
+      }
+
+      pedidoEnEdicion = p.ID_Pedido;
+      document.getElementById("cliNombre").value = p.Nombre_Cliente || "";
+      document.getElementById("cliTelefono").value = p.Telefono_Cliente || "";
+      document.getElementById("cliDireccion").value = p.Direccion_Entrega || "";
+
+      carrito = {};
+      try {
+        const itemsGuardados = JSON.parse(p.Detalle_JSON || "[]");
+        itemsGuardados.forEach(item => {
+          const prodActual = catalogo.find(c => c.ID_Producto === item.ID_Producto) || item;
+          carrito[item.ID_Producto] = {
+            ...prodActual,
+            cantidad: Number(item.cantidad) || 1
+          };
+        });
+      } catch (e) {}
+
+      document.getElementById("lblIdEdicion").innerText = p.ID_Pedido;
+      document.getElementById("bannerEdicion").classList.remove("hidden");
+      cambiarTab("catalogo");
+      renderProductos();
+      actualizarBarraCarrito();
+    }
+
+    function cancelarModoEdicion() {
+      pedidoEnEdicion = null;
+      document.getElementById("bannerEdicion").classList.add("hidden");
+      actualizarBarraCarrito();
+    }
+
+    // 6. ASISTENTE DE INTELIGENCIA ARTIFICIAL
+    function toggleModalIA() {
+      document.getElementById("modalIA").classList.toggle("hidden");
+    }
+
+    async function enviarPreguntaIA() {
+      const input = document.getElementById("inputPreguntaIA");
+      const texto = input.value.trim();
+      if (!texto) return;
+
+      const chat = document.getElementById("chatMensajes");
+      chat.innerHTML += `<div class="bg-amber-600 text-white p-2.5 rounded-2xl rounded-tr-none ml-auto max-w-[85%]">${texto}</div>`;
+      input.value = "";
+      chat.scrollTop = chat.scrollHeight;
+
+      if (API_URL === "URL_DE_TU_APPS_SCRIPT") {
+        setTimeout(() => {
+          chat.innerHTML += `<div class="bg-slate-100 text-slate-800 p-2.5 rounded-2xl rounded-tl-none max-w-[85%]">Para rotisería o spiedo te recomiendo el <b>Cajón de 20kg Calibre 8</b> (trae 8 pollos parejos). Si buscás para trozar o milanesas, elegí <b>Calibre 7</b> que rinde más en pechuga. Podés repetir tu último pedido con el botón verde de arriba o modificarlo mientras no haya salido el camión.</div>`;
+          chat.scrollTop = chat.scrollHeight;
+        }, 450);
+        return;
+      }
+
+      try {
+        const res = await fetch(API_URL, {
+          method: "POST",
+          body: JSON.stringify({ action: "chat_ia", mensaje: texto })
+        });
+        const data = await res.json();
+        chat.innerHTML += `<div class="bg-slate-100 text-slate-800 p-2.5 rounded-2xl rounded-tl-none max-w-[85%] whitespace-pre-line">${data.respuesta || data.message}</div>`;
+        chat.scrollTop = chat.scrollHeight;
+      } catch (e) {
+        chat.innerHTML += `<div class="bg-red-50 text-red-700 p-2.5 rounded-2xl rounded-tl-none max-w-[85%]">No pude conectar con el asistente en este momento.</div>`;
+      }
+    }
+  </script>
+</body>
+</html>
