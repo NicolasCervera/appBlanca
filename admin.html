@@ -2,157 +2,548 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Panel Secretario - Gestión & Recordatorios</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Admin & Gestión - Central de Pedidos</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <style>
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
 </head>
-<body class="bg-slate-900 text-slate-100 min-h-screen font-sans pb-16">
+<body class="bg-slate-900 text-slate-100 min-h-screen font-sans pb-20">
 
-  <!-- HEADER -->
-  <header class="bg-slate-800 border-b border-slate-700 p-4 sticky top-0 z-20">
-    <div class="max-w-3xl mx-auto flex justify-between items-center">
-      <div>
-        <h1 class="text-base font-bold text-amber-400"><i class="fa-solid fa-clipboard-check mr-1"></i> Panel del Secretario</h1>
-        <p class="text-xs text-slate-400">Control de Pedidos, Despacho y Recordatorios WhatsApp</p>
+  <!-- PANTALLA DE LOGIN POR ROL (GERENTE VS SECRETARIO) -->
+  <div id="modalLogin" class="fixed inset-0 bg-slate-950/95 z-50 flex items-center justify-center p-4">
+    <div class="bg-slate-800 border border-slate-700 w-full max-w-sm rounded-3xl p-6 shadow-2xl space-y-4">
+      <div class="text-center">
+        <div class="w-12 h-12 bg-amber-500/20 text-amber-400 rounded-2xl flex items-center justify-center mx-auto mb-2 text-xl">
+          <i class="fa-solid fa-user-shield"></i>
+        </div>
+        <h2 class="text-lg font-extrabold text-white">Ingreso al Panel</h2>
+        <p class="text-xs text-slate-400">Seleccioná tu rol para habilitar tus herramientas</p>
       </div>
-      <button onclick="cargarDatosAdmin()" class="bg-slate-700 hover:bg-slate-600 px-3 py-1.5 rounded-xl text-xs font-bold">
-        <i class="fa-solid fa-rotate mr-1"></i> Actualizar
+
+      <div class="grid grid-cols-2 gap-2 text-xs font-bold">
+        <button id="btnRolSec" onclick="seleccionarRolLogin('Secretario')" class="py-3 rounded-xl border-2 border-amber-500 bg-amber-500/20 text-amber-300 flex flex-col items-center gap-1">
+          <i class="fa-solid fa-headset text-base"></i> Secretario
+        </button>
+        <button id="btnRolGer" onclick="seleccionarRolLogin('Gerente')" class="py-3 rounded-xl border border-slate-700 bg-slate-900 text-slate-400 flex flex-col items-center gap-1">
+          <i class="fa-solid fa-crown text-base"></i> Gerente
+        </button>
+      </div>
+
+      <div>
+        <label class="text-xs text-slate-400 font-semibold">PIN de Acceso</label>
+        <input id="inputPin" type="password" placeholder="Secretario: 1234 | Gerente: 9999" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-center tracking-widest mt-1 focus:outline-none focus:border-amber-500" onkeypress="if(event.key==='Enter') confirmarLogin()" />
+        <p class="text-[11px] text-slate-500 text-center mt-1.5">PIN Demo: Secretario <b>1234</b> • Gerente <b>9999</b></p>
+      </div>
+
+      <button onclick="confirmarLogin()" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold py-3 rounded-xl text-sm shadow-lg transition">
+        Ingresar al Sistema
       </button>
     </div>
+  </div>
 
-    <div class="max-w-3xl mx-auto mt-3 grid grid-cols-2 bg-slate-900 p-1 rounded-xl text-xs font-bold">
-      <button id="btnTabPedidos" onclick="switchAdminTab('pedidos')" class="py-2 rounded-lg bg-amber-500 text-slate-900">
-        📦 Pedidos del Día
+  <!-- HEADER PRINCIPAL -->
+  <header class="bg-slate-800 border-b border-slate-700 p-3.5 sticky top-0 z-30 shadow-lg">
+    <div class="max-w-5xl mx-auto flex justify-between items-center gap-2">
+      <div>
+        <div class="flex items-center gap-2">
+          <h1 class="text-base font-extrabold text-white"><i class="fa-solid fa-boxes-stacked text-amber-400 mr-1"></i> Gestión Central</h1>
+          <span id="badgeRolActual" class="text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40">
+            Secretario
+          </span>
+        </div>
+        <p class="text-[11px] text-slate-400">Control de Pedidos, Clientes, Precios y Conocimiento IA</p>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button onclick="cargarDatosAdmin()" class="bg-slate-700 hover:bg-slate-600 px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1" title="Sincronizar con Google Sheets">
+          <i id="iconoSync" class="fa-solid fa-rotate"></i> <span class="hidden sm:inline">Actualizar</span>
+        </button>
+        <button onclick="abrirCambioRol()" class="bg-slate-900 hover:bg-slate-700 border border-slate-600 px-3 py-2 rounded-xl text-xs font-bold text-amber-400 flex items-center gap-1">
+          <i class="fa-solid fa-user-gear"></i> Cambiar Rol
+        </button>
+      </div>
+    </div>
+
+    <!-- BARRA DE 4 PESTAÑAS -->
+    <div class="max-w-5xl mx-auto mt-3 flex gap-1.5 overflow-x-auto no-scrollbar bg-slate-900 p-1.5 rounded-2xl text-xs font-bold">
+      <button id="tabBtn-pedidos" onclick="switchTab('pedidos')" class="tab-btn flex-1 py-2 px-3 rounded-xl bg-amber-500 text-slate-950 whitespace-nowrap transition">
+        📦 Pedidos
       </button>
-      <button id="btnTabRecordatorios" onclick="switchAdminTab('recordatorios')" class="py-2 rounded-lg text-slate-400">
-        📲 Recordar por WhatsApp
+      <button id="tabBtn-clientes" onclick="switchTab('clientes')" class="tab-btn flex-1 py-2 px-3 rounded-xl text-slate-400 whitespace-nowrap transition">
+        📲 Clientes y WhatsApp
+      </button>
+      <button id="tabBtn-productos" onclick="switchTab('productos')" class="tab-btn flex-1 py-2 px-3 rounded-xl text-slate-400 whitespace-nowrap transition">
+        🏷️ Actualizar Precios y Productos <i id="lockProd" class="fa-solid fa-lock text-[10px] ml-1 text-amber-400"></i>
+      </button>
+      <button id="tabBtn-ia" onclick="switchTab('ia')" class="tab-btn flex-1 py-2 px-3 rounded-xl text-slate-400 whitespace-nowrap transition">
+        🧠 Conocimiento IA <i id="lockIA" class="fa-solid fa-lock text-[10px] ml-1 text-amber-400"></i>
       </button>
     </div>
   </header>
 
-  <main class="max-w-3xl mx-auto p-3">
+  <main class="max-w-5xl mx-auto p-3 space-y-4">
 
-    <!-- VISTA 1: PEDIDOS -->
-    <section id="vistaPedidos" class="space-y-3">
-      <div id="contenedorPedidos" class="space-y-3">
-        <p class="text-center text-xs text-slate-400 py-8">Cargando pedidos...</p>
+    <!-- ========================================== -->
+    <!-- PESTAÑA 1: PEDIDOS (SECRETARIO Y GERENTE)  -->
+    <!-- ========================================== -->
+    <section id="vista-pedidos" class="space-y-3">
+      <div class="flex flex-wrap justify-between items-center gap-2 bg-slate-800/80 border border-slate-700 p-3 rounded-2xl">
+        <div class="flex gap-1.5 text-xs font-bold overflow-x-auto no-scrollbar">
+          <button onclick="filtrarEstadoPedido('Todos')" class="px-3 py-1.5 rounded-lg bg-slate-700 text-white">Todos</button>
+          <button onclick="filtrarEstadoPedido('Pendiente')" class="px-3 py-1.5 rounded-lg bg-amber-500/20 text-amber-300">⏳ Pendientes</button>
+          <button onclick="filtrarEstadoPedido('En Preparación')" class="px-3 py-1.5 rounded-lg bg-blue-500/20 text-blue-300">🔪 En Preparación</button>
+          <button onclick="filtrarEstadoPedido('Enviado')" class="px-3 py-1.5 rounded-lg bg-green-500/20 text-green-300">🚚 Enviados</button>
+        </div>
+        <button onclick="abrirModalPedido()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold px-3.5 py-2 rounded-xl text-xs shadow flex items-center gap-1.5">
+          <i class="fa-solid fa-plus"></i> Nuevo Pedido Manual
+        </button>
       </div>
+
+      <div id="contenedorPedidos" class="grid grid-cols-1 md:grid-cols-2 gap-3"></div>
     </section>
 
-    <!-- VISTA 2: DISPARADOR DE RECORDATORIOS WHATSAPP -->
-    <section id="vistaRecordatorios" class="hidden space-y-3">
-      <div class="bg-slate-800 border border-slate-700 p-3.5 rounded-2xl text-xs">
-        <p class="font-bold text-amber-400 mb-1"><i class="fa-brands fa-whatsapp mr-1"></i> Recordatorio rápido de pedidos</p>
-        <p class="text-slate-300">Tocá "Recordar Pedido" para enviarle a cada cliente su mensaje pre-armado con el link al catálogo.</p>
+    <!-- ========================================== -->
+    <!-- PESTAÑA 2: CLIENTES Y RECORDATORIOS WA     -->
+    <!-- ========================================== -->
+    <section id="vista-clientes" class="hidden space-y-3">
+      <div class="bg-slate-800 border border-slate-700 p-3.5 rounded-2xl flex flex-wrap justify-between items-center gap-2">
+        <div class="text-xs">
+          <p class="font-bold text-amber-400 text-sm"><i class="fa-brands fa-whatsapp mr-1"></i> Agenda de Clientes y Recordatorios</p>
+          <p class="text-slate-400">Enviá el recordatorio habitual en 1 clic o agregá/editá clientes de la cartera.</p>
+        </div>
+        <button onclick="abrirModalCliente()" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold px-3.5 py-2 rounded-xl text-xs shadow flex items-center gap-1.5">
+          <i class="fa-solid fa-user-plus"></i> Agregar Cliente
+        </button>
       </div>
-      <div id="contenedorClientes" class="space-y-2.5"></div>
+
+      <div id="contenedorClientes" class="grid grid-cols-1 md:grid-cols-2 gap-3"></div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- PESTAÑA 3: ACTUALIZAR PRECIOS Y PRODUCTOS  -->
+    <!-- ========================================== -->
+    <section id="vista-productos" class="hidden space-y-3">
+      <div class="bg-slate-800 border border-slate-700 p-3.5 rounded-2xl flex flex-wrap justify-between items-center gap-2">
+        <div class="text-xs">
+          <p class="font-bold text-amber-400 text-sm"><i class="fa-solid fa-tags mr-1"></i> Actualizar Precios, Stock y Catálogo (Modo Gerente)</p>
+          <p class="text-slate-400">Cambiá el precio o stock directamente en la fila y tocá el tilde verde para guardar al instante.</p>
+        </div>
+        <button onclick="abrirModalProducto()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold px-3.5 py-2 rounded-xl text-xs shadow flex items-center gap-1.5">
+          <i class="fa-solid fa-box-open"></i> + Nuevo Producto
+        </button>
+      </div>
+
+      <!-- Filtro de rubro en admin -->
+      <div class="flex gap-2 overflow-x-auto no-scrollbar text-xs font-bold">
+        <button onclick="filtrarRubroAdmin('Todos')" class="px-3 py-1.5 rounded-xl bg-slate-700 text-white">Todos los Rubros</button>
+        <button onclick="filtrarRubroAdmin('Pollería')" class="px-3 py-1.5 rounded-xl bg-slate-800 border border-slate-700 text-slate-300">🐔 Pollería</button>
+        <button onclick="filtrarRubroAdmin('Carnicería')" class="px-3 py-1.5 rounded-xl bg-slate-800 border border-slate-700 text-slate-300">🥩 Carnicería</button>
+        <button onclick="filtrarRubroAdmin('Panadería')" class="px-3 py-1.5 rounded-xl bg-slate-800 border border-slate-700 text-slate-300">🥖 Panadería</button>
+        <button onclick="filtrarRubroAdmin('Distribuidora')" class="px-3 py-1.5 rounded-xl bg-slate-800 border border-slate-700 text-slate-300">📦 Distribuidora</button>
+      </div>
+
+      <div id="contenedorProductosAdmin" class="space-y-2.5"></div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- PESTAÑA 4: CONOCIMIENTO IA (GERENTE)       -->
+    <!-- ========================================== -->
+    <section id="vista-ia" class="hidden space-y-3">
+      <div class="bg-slate-800 border border-slate-700 p-3.5 rounded-2xl flex flex-wrap justify-between items-center gap-2">
+        <div class="text-xs">
+          <p class="font-bold text-amber-400 text-sm"><i class="fa-solid fa-brain mr-1"></i> Base de Conocimiento de la IA (Gemini)</p>
+          <p class="text-slate-400">Todo lo que escribas o edites acá lo usa el asistente virtual para responder a los clientes.</p>
+        </div>
+        <button onclick="abrirModalIA()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold px-3.5 py-2 rounded-xl text-xs shadow flex items-center gap-1.5">
+          <i class="fa-solid fa-plus"></i> Nueva Regla IA
+        </button>
+      </div>
+
+      <div id="contenedorConocimientoIA" class="space-y-2.5"></div>
     </section>
 
   </main>
 
-  <!-- MODAL EDICIÓN DEL SECRETARIO -->
-  <div id="modalEditarSec" class="fixed inset-0 bg-black/75 z-50 hidden flex items-center justify-center p-4">
+  <!-- ========================================== -->
+  <!-- MODAL 1: CREAR / EDITAR PEDIDO             -->
+  <!-- ========================================== -->
+  <div id="modalPedido" class="fixed inset-0 bg-black/80 z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-slate-800 border border-slate-700 w-full max-w-md rounded-2xl p-5 space-y-3 text-xs max-h-[90vh] overflow-y-auto">
+      <div class="flex justify-between items-center border-b border-slate-700 pb-2">
+        <h3 class="font-bold text-sm text-amber-400" id="tituloModalPedido">Editar Pedido</h3>
+        <button onclick="cerrarModal('modalPedido')" class="text-slate-400 text-xl">&times;</button>
+      </div>
+      <input type="hidden" id="pedId" />
+      <div>
+        <label class="text-slate-400 font-semibold">Nombre del Cliente o Comercio *</label>
+        <input id="pedNombre" type="text" placeholder="Ej: Rotisería El Pollo Loco" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 mt-1" />
+      </div>
+      <div>
+        <label class="text-slate-400 font-semibold">Teléfono WhatsApp *</label>
+        <input id="pedTelefono" type="text" placeholder="Ej: 5493875112233" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 mt-1" />
+      </div>
+      <div>
+        <label class="text-slate-400 font-semibold">Dirección de Entrega *</label>
+        <input id="pedDireccion" type="text" placeholder="Ej: Av. Belgrano 450" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 mt-1" />
+      </div>
+      <div>
+        <label class="text-slate-400 font-semibold">Detalle del Pedido (Cajones, Calibres, Cantidades) *</label>
+        <textarea id="pedDetalle" rows="3" placeholder="Ej: 3x Cajón Pollo 20kg [Calibre 8] | 1x Suprema 5kg" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 mt-1"></textarea>
+      </div>
+      <div>
+        <label class="text-slate-400 font-semibold">Importe Total ($) *</label>
+        <input id="pedTotal" type="number" placeholder="Ej: 144000" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 mt-1" />
+      </div>
+      <button onclick="guardarPedidoAdmin()" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold py-3 rounded-xl mt-2">
+        Guardar Pedido
+      </button>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL 2: CREAR / EDITAR CLIENTE            -->
+  <!-- ========================================== -->
+  <div id="modalCliente" class="fixed inset-0 bg-black/80 z-50 hidden flex items-center justify-center p-4">
     <div class="bg-slate-800 border border-slate-700 w-full max-w-md rounded-2xl p-5 space-y-3 text-xs">
-      <div class="flex justify-between items-center">
-        <h3 class="font-bold text-sm text-amber-400">Editar Pedido <span id="secIdPedido"></span></h3>
-        <button onclick="cerrarModalSec()" class="text-slate-400 text-xl">&times;</button>
+      <div class="flex justify-between items-center border-b border-slate-700 pb-2">
+        <h3 class="font-bold text-sm text-emerald-400" id="tituloModalCliente">Datos del Cliente</h3>
+        <button onclick="cerrarModal('modalCliente')" class="text-slate-400 text-xl">&times;</button>
+      </div>
+      <input type="hidden" id="cliId" />
+      <div>
+        <label class="text-slate-400 font-semibold">Nombre del Comercio / Negocio *</label>
+        <input id="cliComercio" type="text" placeholder="Ej: Pollería San José" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 mt-1" />
       </div>
       <div>
-        <label class="text-slate-400">Cliente</label>
-        <input id="secNombre" type="text" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 mt-1" />
+        <label class="text-slate-400 font-semibold">Nombre de Contacto *</label>
+        <input id="cliContacto" type="text" placeholder="Ej: Juan Pérez" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 mt-1" />
       </div>
       <div>
-        <label class="text-slate-400">Dirección de Entrega</label>
-        <input id="secDireccion" type="text" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 mt-1" />
+        <label class="text-slate-400 font-semibold">Teléfono WhatsApp (con código país, ej: 549387...) *</label>
+        <input id="cliWhatsapp" type="text" placeholder="Ej: 5493875112233" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 mt-1" />
       </div>
       <div>
-        <label class="text-slate-400">Detalle del Pedido (cajones, calibres, cantidades)</label>
-        <textarea id="secDetalle" rows="3" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 mt-1"></textarea>
+        <label class="text-slate-400 font-semibold">Pedido Habitual (para el recordatorio de WhatsApp) *</label>
+        <input id="cliHabitual" type="text" placeholder="Ej: 3 cajones Calibre 8 + 1 Suprema" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 mt-1" />
       </div>
       <div>
-        <label class="text-slate-400">Total ($)</label>
-        <input id="secTotal" type="number" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 mt-1" />
+        <label class="text-slate-400 font-semibold">Días de Reparto / Visita *</label>
+        <input id="cliDias" type="text" placeholder="Ej: Lunes, Miércoles y Viernes" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 mt-1" />
       </div>
-      <button onclick="guardarEdicionSecretario()" class="w-full bg-amber-500 text-slate-900 font-bold py-2.5 rounded-xl mt-2">
-        Guardar Modificación
+      <button onclick="guardarClienteAdmin()" class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold py-3 rounded-xl mt-2">
+        Guardar Cliente
+      </button>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL 3: CREAR / EDITAR PRODUCTO           -->
+  <!-- ========================================== -->
+  <div id="modalProducto" class="fixed inset-0 bg-black/80 z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-slate-800 border border-slate-700 w-full max-w-md rounded-2xl p-5 space-y-3 text-xs max-h-[90vh] overflow-y-auto">
+      <div class="flex justify-between items-center border-b border-slate-700 pb-2">
+        <h3 class="font-bold text-sm text-amber-400" id="tituloModalProducto">Ficha de Producto</h3>
+        <button onclick="cerrarModal('modalProducto')" class="text-slate-400 text-xl">&times;</button>
+      </div>
+      <input type="hidden" id="prodId" />
+      <div class="grid grid-cols-2 gap-2">
+        <div>
+          <label class="text-slate-400 font-semibold">Rubro *</label>
+          <select id="prodRubro" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 mt-1">
+            <option value="Pollería">Pollería</option>
+            <option value="Carnicería">Carnicería</option>
+            <option value="Panadería">Panadería</option>
+            <option value="Distribuidora">Distribuidora</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-slate-400 font-semibold">Categoría *</label>
+          <input id="prodCategoria" type="text" placeholder="Ej: Cajones de Pollo" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 mt-1" />
+        </div>
+      </div>
+      <div>
+        <label class="text-slate-400 font-semibold">Nombre del Producto *</label>
+        <input id="prodNombre" type="text" placeholder="Ej: Cajón de Pollo Fresco 20kg" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 mt-1" />
+      </div>
+      <div>
+        <label class="text-slate-400 font-semibold">Calibre / Variante / Presentación *</label>
+        <input id="prodCalibre" type="text" placeholder="Ej: Calibre 8 (Rotisería / Spiedo)" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 mt-1" />
+      </div>
+      <div class="grid grid-cols-2 gap-2">
+        <div>
+          <label class="text-slate-400 font-semibold">Precio ($) *</label>
+          <input id="prodPrecio" type="number" placeholder="48000" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 mt-1" />
+        </div>
+        <div>
+          <label class="text-slate-400 font-semibold">Stock Disponible *</label>
+          <input id="prodStock" type="number" placeholder="25" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 mt-1" />
+        </div>
+      </div>
+      <div class="flex items-center gap-2 pt-1">
+        <input id="prodActivo" type="checkbox" checked class="w-4 h-4 accent-amber-500" />
+        <label for="prodActivo" class="text-slate-300 font-semibold">Producto Activo (visible en el catálogo del cliente)</label>
+      </div>
+      <button onclick="guardarProductoCompleto()" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold py-3 rounded-xl mt-2">
+        Guardar Producto
+      </button>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL 4: CREAR / EDITAR REGLA IA           -->
+  <!-- ========================================== -->
+  <div id="modalIA" class="fixed inset-0 bg-black/80 z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-slate-800 border border-slate-700 w-full max-w-md rounded-2xl p-5 space-y-3 text-xs">
+      <div class="flex justify-between items-center border-b border-slate-700 pb-2">
+        <h3 class="font-bold text-sm text-amber-400" id="tituloModalIA">Regla de Conocimiento IA</h3>
+        <button onclick="cerrarModal('modalIA')" class="text-slate-400 text-xl">&times;</button>
+      </div>
+      <input type="hidden" id="iaId" />
+      <div>
+        <label class="text-slate-400 font-semibold">Tópico / Categoría *</label>
+        <select id="iaTopico" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 mt-1">
+          <option value="Identidad">Identidad del Negocio</option>
+          <option value="Calibres_y_Productos">Calibres y Productos</option>
+          <option value="Reglas_Envio">Reglas de Envío y Horarios</option>
+          <option value="Promociones">Promociones y Descuentos</option>
+        </select>
+      </div>
+      <div>
+        <label class="text-slate-400 font-semibold">Instrucción para el Asistente IA *</label>
+        <textarea id="iaInstruccion" rows="4" placeholder="Ej: El cajón calibre 8 trae 8 pollos parejos ideales para spiedo. Los pedidos se toman hasta las 11 AM." class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 mt-1"></textarea>
+      </div>
+      <div class="flex items-center gap-2 pt-1">
+        <input id="iaActivo" type="checkbox" checked class="w-4 h-4 accent-amber-500" />
+        <label for="iaActivo" class="text-slate-300 font-semibold">Regla Activa (Gemini la usará al responder)</label>
+      </div>
+      <button onclick="guardarReglaIA()" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold py-3 rounded-xl mt-2">
+        Guardar Conocimiento IA
       </button>
     </div>
   </div>
 
   <script>
-    const API_URL = "URL_DE_TU_APPS_SCRIPT";
-    const URL_APP_CLIENTE = "https://tu-dominio-o-github-pages.com/index.html";
+    // REEMPLAZAR POR LA URL DE TU IMPLEMENTACIÓN DE GOOGLE APPS SCRIPT
+    const API_URL = "https://script.google.com/macros/s/AKfycbxAe65WS5SzvMapgdIifQqvh9mBbZtjImdK39ycyE95BvAh-HofNy0KgZ3FXYZmhEct/exec";
+    // REEMPLAZAR POR LA URL DONDE PUBLIQUES EL INDEX.HTML DEL CLIENTE
+    const URL_APP_CLIENTE = "https://appblanca.emilionicolascervera.workers.dev/";
+
+    // PINES DE ACCESO POR ROL (Podés cambiarlos acá)
+    const PINES = {
+      Secretario: "1234",
+      Gerente: "9999"
+    };
+
+    let rolActual = "Secretario";
+    let rolSeleccionadoLogin = "Secretario";
+
     let pedidos = [];
     let clientes = [];
-    let pedidoActualSec = null;
+    let productos = [];
+    let conocimiento = [];
 
-    window.onload = cargarDatosAdmin;
+    let filtroEstadoPed = "Todos";
+    let filtroRubroProd = "Todos";
 
-    async function cargarDatosAdmin() {
-      if (API_URL === "URL_DE_TU_APPS_SCRIPT") {
-        pedidos = [
-          { ID_Pedido: "PED-1042", Fecha_Hora: "Hoy 09:15", Nombre_Cliente: "Rotisería El Pollo Loco", Telefono_Cliente: "5493875112233", Direccion_Entrega: "Av. Belgrano 450", Detalle_Legible: "3x Cajón Pollo 20kg [Calibre 8]", Total: 144000, Estado: "Pendiente", Detalle_JSON: "[]" },
-          { ID_Pedido: "PED-1041", Fecha_Hora: "Hoy 08:30", Nombre_Cliente: "Carnicería Don Tito", Telefono_Cliente: "5493875445566", Direccion_Entrega: "San Martín 120", Detalle_Legible: "2x Cajón Pollo 20kg [Calibre 7] | 1x Suprema 5kg", Total: 126000, Estado: "Enviado", Detalle_JSON: "[]" }
-        ];
-        clientes = [
-          { ID_Cliente: "C01", Nombre_Comercio: "Rotisería El Pollo Loco", Nombre_Contacto: "Juan", Telefono_WhatsApp: "5493875112233", Pedido_Habitual: "3 cajones Calibre 8", Dias_Visita: "Lunes, Jueves" },
-          { ID_Cliente: "C02", Nombre_Comercio: "Despensa y Pollería Sur", Nombre_Contacto: "Marta", Telefono_WhatsApp: "5493875998877", Pedido_Habitual: "2 cajones Calibre 9", Dias_Visita: "Martes, Viernes" }
-        ];
-        renderPedidos();
-        renderClientes();
+    window.addEventListener("DOMContentLoaded", () => {
+      const rolGuardado = sessionStorage.getItem("admin_rol");
+      if (rolGuardado) {
+        aplicarRol(rolGuardado);
+        document.getElementById("modalLogin").classList.add("hidden");
+      }
+      cargarDatosAdmin();
+    });
+
+    // ==========================================
+    // 1. GESTIÓN DE ROLES (GERENTE VS SECRETARIO)
+    // ==========================================
+    function seleccionarRolLogin(rol) {
+      rolSeleccionadoLogin = rol;
+      const esSec = rol === "Secretario";
+      document.getElementById("btnRolSec").className = esSec
+        ? "py-3 rounded-xl border-2 border-amber-500 bg-amber-500/20 text-amber-300 flex flex-col items-center gap-1"
+        : "py-3 rounded-xl border border-slate-700 bg-slate-900 text-slate-400 flex flex-col items-center gap-1";
+      document.getElementById("btnRolGer").className = !esSec
+        ? "py-3 rounded-xl border-2 border-amber-500 bg-amber-500/20 text-amber-300 flex flex-col items-center gap-1"
+        : "py-3 rounded-xl border border-slate-700 bg-slate-900 text-slate-400 flex flex-col items-center gap-1";
+    }
+
+    function confirmarLogin() {
+      const pin = document.getElementById("inputPin").value.trim();
+      if (pin !== PINES[rolSeleccionadoLogin]) {
+        alert("PIN incorrecto. (Demo: Secretario = 1234 | Gerente = 9999)");
+        return;
+      }
+      sessionStorage.setItem("admin_rol", rolSeleccionadoLogin);
+      aplicarRol(rolSeleccionadoLogin);
+      document.getElementById("inputPin").value = "";
+      document.getElementById("modalLogin").classList.add("hidden");
+    }
+
+    function abrirCambioRol() {
+      document.getElementById("modalLogin").classList.remove("hidden");
+    }
+
+    function aplicarRol(rol) {
+      rolActual = rol;
+      const badge = document.getElementById("badgeRolActual");
+      badge.innerText = rol === "Gerente" ? "👑 Gerente" : "🎧 Secretario";
+      badge.className = rol === "Gerente"
+        ? "text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
+        : "text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40";
+
+      // Mostrar u ocultar candados en las pestañas exclusivas de Gerente
+      document.getElementById("lockProd").classList.toggle("hidden", rol === "Gerente");
+      document.getElementById("lockIA").classList.toggle("hidden", rol === "Gerente");
+
+      // Si baja a Secretario estando en una pestaña de Gerente, vuelve a Pedidos
+      if (rol === "Secretario") {
+        switchTab("pedidos");
+      }
+    }
+
+    function switchTab(tab) {
+      if ((tab === "productos" || tab === "ia") && rolActual !== "Gerente") {
+        if (confirm("🔒 Esta sección es exclusiva para el rol GERENTE.\n¿Querés ingresar el PIN de Gerente (9999) para desbloquearla?")) {
+          seleccionarRolLogin("Gerente");
+          abrirCambioRol();
+        }
         return;
       }
 
-      const res = await fetch(`${API_URL}?action=admin_datos`);
-      const data = await res.json();
-      if (data.status === "ok") {
-        pedidos = data.pedidos;
-        clientes = data.clientes;
-        renderPedidos();
-        renderClientes();
+      ["pedidos", "clientes", "productos", "ia"].forEach(t => {
+        document.getElementById(`vista-${t}`).classList.toggle("hidden", t !== tab);
+        const btn = document.getElementById(`tabBtn-${t}`);
+        if (t === tab) {
+          btn.className = "tab-btn flex-1 py-2 px-3 rounded-xl bg-amber-500 text-slate-950 whitespace-nowrap transition font-extrabold shadow";
+        } else {
+          btn.className = "tab-btn flex-1 py-2 px-3 rounded-xl text-slate-400 hover:text-white whitespace-nowrap transition";
+        }
+      });
+    }
+
+    function cerrarModal(id) {
+      document.getElementById(id).classList.add("hidden");
+    }
+
+    // ==========================================
+    // 2. CARGA DE DATOS (GOOGLE SHEETS O DEMO)
+    // ==========================================
+    async function cargarDatosAdmin() {
+      const icono = document.getElementById("iconoSync");
+      icono.classList.add("fa-spin");
+
+      if (API_URL === "URL_DE_TU_APPS_SCRIPT") {
+        // Datos iniciales de prueba si aún no conectaste la URL de Apps Script
+        if (!productos.length) {
+          productos = [
+            { ID_Producto: "P01", Rubro: "Pollería", Categoria: "Cajones de Pollo", Nombre: "Cajón de Pollo 20kg", Calibre_Variante: "Calibre 8 (Rotisería / Spiedo)", Precio: 48000, Stock_Disponible: 25, Activo: true },
+            { ID_Producto: "P02", Rubro: "Pollería", Categoria: "Cajones de Pollo", Nombre: "Cajón de Pollo 20kg", Calibre_Variante: "Calibre 7 (Grande / Trozar)", Precio: 49500, Stock_Disponible: 18, Activo: true },
+            { ID_Producto: "P03", Rubro: "Pollería", Categoria: "Subproductos", Nombre: "Suprema de Pollo", Calibre_Variante: "Bandeja x 5kg", Precio: 27000, Stock_Disponible: 12, Activo: true },
+            { ID_Producto: "C01", Rubro: "Carnicería", Categoria: "Media Res", Nombre: "Media Res Novillito", Calibre_Variante: "Aprox 95kg - Precio x Kg", Precio: 6800, Stock_Disponible: 10, Activo: true },
+            { ID_Producto: "PA1", Rubro: "Panadería", Categoria: "Insumos", Nombre: "Harina 000 Panadera", Calibre_Variante: "Bolsa x 25kg", Precio: 16500, Stock_Disponible: 40, Activo: true },
+            { ID_Producto: "D01", Rubro: "Distribuidora", Categoria: "Almacén", Nombre: "Aceite Girasol Mayorista", Calibre_Variante: "Pack 15 x 900ml", Precio: 24000, Stock_Disponible: 30, Activo: true }
+          ];
+          pedidos = [
+            { ID_Pedido: "PED-1042", Fecha_Hora: "04/11/2026 09:15", Telefono_Cliente: "5493875112233", Nombre_Cliente: "Rotisería El Pollo Loco", Direccion_Entrega: "Av. Belgrano 450", Detalle_Legible: "3x Cajón de Pollo 20kg [Calibre 8]", Total: 144000, Estado: "Pendiente", Ultima_Modificacion: "Creado por Cliente" },
+            { ID_Pedido: "PED-1041", Fecha_Hora: "04/11/2026 08:30", Telefono_Cliente: "5493875445566", Nombre_Cliente: "Carnicería Don Tito", Direccion_Entrega: "San Martín 120", Detalle_Legible: "2x Cajón de Pollo 20kg [Calibre 7] | 1x Suprema 5kg", Total: 126000, Estado: "Enviado", Ultima_Modificacion: "Estado a Enviado" }
+          ];
+          clientes = [
+            { ID_Cliente: "C01", Nombre_Comercio: "Rotisería El Pollo Loco", Nombre_Contacto: "Juan Pérez", Telefono_WhatsApp: "5493875112233", Pedido_Habitual: "3 cajones Calibre 8", Dias_Visita: "Lunes, Jueves" },
+            { ID_Cliente: "C02", Nombre_Comercio: "Carnicería Don Tito", Nombre_Contacto: "Roberto Gómez", Telefono_WhatsApp: "5493875445566", Pedido_Habitual: "2 cajones Calibre 7 + 1 Suprema 5kg", Dias_Visita: "Martes, Viernes" }
+          ];
+          conocimiento = [
+            { ID_Regla: "R-01", Topico: "Identidad", Instruccion: "Sos el asistente virtual de Avícola & Distribuidora del Norte. Hablás de forma amable y directa.", Activo: true },
+            { ID_Regla: "R-02", Topico: "Calibres_y_Productos", Instruccion: "El cajón de pollo pesa 20kg. Calibre 6 y 7 trae pollos grandes (para trozar). Calibre 8 y 9 trae pollos parejos para spiedo.", Activo: true },
+            { ID_Regla: "R-03", Topico: "Reglas_Envio", Instruccion: "El cliente y el secretario pueden modificar el pedido únicamente mientras el estado NO sea Enviado.", Activo: true }
+          ];
+        }
+        setTimeout(() => icono.classList.remove("fa-spin"), 300);
+        renderTodo();
+        return;
       }
+
+      try {
+        const res = await fetch(`${API_URL}?action=admin_datos`);
+        const data = await res.json();
+        if (data.status === "ok") {
+          pedidos = data.pedidos || [];
+          clientes = data.clientes || [];
+          productos = data.productos || [];
+          conocimiento = data.conocimiento || [];
+          renderTodo();
+        }
+      } catch (e) {
+        alert("Error al sincronizar con Google Sheets.");
+      } finally {
+        icono.classList.remove("fa-spin");
+      }
+    }
+
+    function renderTodo() {
+      renderPedidos();
+      renderClientes();
+      renderProductosAdmin();
+      renderConocimientoIA();
+    }
+
+    // ==========================================
+    // 3. TABLA PEDIDOS (CREAR, EDITAR, ESTADO)
+    // ==========================================
+    function filtrarEstadoPedido(estado) {
+      filtroEstadoPed = estado;
+      renderPedidos();
     }
 
     function renderPedidos() {
       const cont = document.getElementById("contenedorPedidos");
-      if (!pedidos.length) {
-        cont.innerHTML = `<p class="text-center text-xs text-slate-500 py-8">No hay pedidos registrados.</p>`;
+      const lista = filtroEstadoPed === "Todos" ? pedidos : pedidos.filter(p => p.Estado === filtroEstadoPed);
+
+      if (!lista.length) {
+        cont.innerHTML = `<p class="text-xs text-slate-400 py-8 text-center col-span-2">No hay pedidos en este estado.</p>`;
         return;
       }
 
-      cont.innerHTML = pedidos.map(p => {
+      cont.innerHTML = lista.map(p => {
         const esEnviado = p.Estado === "Enviado";
+        const jsonSeguro = JSON.stringify(p).replace(/'/g, "&apos;");
         return `
-        <div class="bg-slate-800 border ${esEnviado ? 'border-green-700/60' : 'border-slate-700'} p-4 rounded-2xl space-y-2 text-xs">
-          <div class="flex justify-between items-center">
-            <div>
-              <span class="font-extrabold text-sm text-white">${p.ID_Pedido}</span>
-              <span class="text-slate-400 ml-2">${p.Fecha_Hora}</span>
+        <div class="bg-slate-800 border ${esEnviado ? 'border-green-700/60' : 'border-slate-700'} p-4 rounded-2xl flex flex-col justify-between space-y-2.5 text-xs shadow">
+          <div class="space-y-2">
+            <div class="flex justify-between items-center">
+              <div>
+                <span class="font-extrabold text-sm text-white">${p.ID_Pedido}</span>
+                <span class="text-[11px] text-slate-400 ml-1">${p.Fecha_Hora || ''}</span>
+              </div>
+              <select onchange="cambiarEstadoPedido('${p.ID_Pedido}', this.value, '${p.Telefono_Cliente}', '${p.Nombre_Cliente}')" class="bg-slate-900 border border-slate-600 rounded-lg px-2 py-1 font-bold text-xs ${esEnviado ? 'text-green-400' : 'text-amber-300'}">
+                <option value="Pendiente" ${p.Estado === 'Pendiente' ? 'selected' : ''}>⏳ Pendiente</option>
+                <option value="En Preparación" ${p.Estado === 'En Preparación' ? 'selected' : ''}>🔪 En Preparación</option>
+                <option value="Enviado" ${p.Estado === 'Enviado' ? 'selected' : ''}>🚚 Enviado</option>
+                <option value="Cancelado" ${p.Estado === 'Cancelado' ? 'selected' : ''}>❌ Cancelado</option>
+              </select>
             </div>
-            <span class="px-2.5 py-1 rounded-full font-bold ${esEnviado ? 'bg-green-900 text-green-300' : 'bg-amber-500/20 text-amber-300'}">
-              ${esEnviado ? '🚚 ENVIADO (Bloqueado)' : '⏳ ' + p.Estado}
-            </span>
+
+            <p class="text-sm font-bold text-amber-400">${p.Nombre_Cliente} <span class="text-xs text-slate-400 font-normal">(${p.Telefono_Cliente})</span></p>
+            <p class="text-slate-300"><i class="fa-solid fa-location-dot text-slate-400 mr-1"></i> ${p.Direccion_Entrega}</p>
+            <div class="bg-slate-900 p-2.5 rounded-xl border border-slate-700 text-slate-200">
+              ${p.Detalle_Legible}
+            </div>
+            <p class="text-[10px] text-slate-400 italic">${p.Ultima_Modificacion || ''}</p>
           </div>
 
-          <p class="text-sm font-bold text-amber-400">${p.Nombre_Cliente} <span class="text-xs text-slate-400 font-normal">(${p.Telefono_Cliente})</span></p>
-          <p class="text-slate-300"><i class="fa-solid fa-location-dot mr-1 text-slate-400"></i> ${p.Direccion_Entrega}</p>
-          <div class="bg-slate-900 p-2.5 rounded-xl border border-slate-700 text-slate-200 font-medium">
-            ${p.Detalle_Legible}
-          </div>
-
-          <div class="flex justify-between items-center pt-2">
+          <div class="flex justify-between items-center pt-2 border-t border-slate-700/80">
             <span class="text-base font-extrabold text-white">$${Number(p.Total).toLocaleString('es-AR')}</span>
-            <div class="flex gap-2">
+            <div class="flex gap-1.5">
               ${
                 !esEnviado
-                  ? `<button onclick='abrirEditarSec(${JSON.stringify(p).replace(/'/g, "&apos;")})' class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-xl font-bold">
+                  ? `<button onclick='abrirModalPedido(${jsonSeguro})' class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-xl font-bold flex items-center gap-1">
                       <i class="fa-solid fa-pen"></i> Editar
-                     </button>
-                     <button onclick="cambiarEstadoPedido('${p.ID_Pedido}', 'Enviado', '${p.Telefono_Cliente}', '${p.Nombre_Cliente}')" class="bg-green-600 hover:bg-green-500 text-white px-3 py-1.5 rounded-xl font-bold">
-                      <i class="fa-solid fa-truck"></i> Marcar Enviado
                      </button>`
-                  : `<span class="text-[11px] text-slate-400 italic py-1.5">Edición deshabilitada (Ya enviado)</span>`
+                  : `<span class="text-[11px] text-green-400 font-semibold px-2 py-1 bg-green-950/60 rounded-lg border border-green-800/50">🔒 Ya Enviado (No editable)</span>`
               }
             </div>
           </div>
@@ -160,54 +551,43 @@
       }).join("");
     }
 
-    function renderClientes() {
-      const cont = document.getElementById("contenedorClientes");
-      cont.innerHTML = clientes.map(c => {
-        const msg = `¡Hola ${c.Nombre_Contacto} (${c.Nombre_Comercio})! 👋 Te escribimos de la distribuidora para recordarte el reparto de hoy. ¿Te preparamos tu pedido habitual (${c.Pedido_Habitual}) o querés encargar desde el catálogo?\n\n📲 Cargalo o modificalo acá: ${URL_APP_CLIENTE}`;
-        const urlWA = `https://wa.me/${String(c.Telefono_WhatsApp).replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`;
-        return `
-        <div class="bg-slate-800 border border-slate-700 p-3.5 rounded-2xl flex justify-between items-center text-xs">
-          <div>
-            <h3 class="font-bold text-sm text-white">${c.Nombre_Comercio}</h3>
-            <p class="text-slate-400">Contacto: ${c.Nombre_Contacto} • Días: ${c.Dias_Visita}</p>
-            <p class="text-amber-400 mt-1 font-semibold">Habitual: ${c.Pedido_Habitual}</p>
-          </div>
-          <a href="${urlWA}" target="_blank" class="bg-green-600 hover:bg-green-500 text-white font-bold px-3.5 py-2.5 rounded-xl flex items-center gap-1.5 whitespace-nowrap shadow">
-            <i class="fa-brands fa-whatsapp text-base"></i> Recordar
-          </a>
-        </div>`;
-      }).join("");
-    }
-
-    function abrirEditarSec(p) {
-      if (p.Estado === "Enviado") {
-        alert("Este pedido ya fue enviado y no se puede modificar.");
+    function abrirModalPedido(p = null) {
+      if (p && p.Estado === "Enviado") {
+        alert("⛔ Este pedido ya figura como ENVIADO y no puede modificarse.");
         return;
       }
-      pedidoActualSec = p;
-      document.getElementById("secIdPedido").innerText = p.ID_Pedido;
-      document.getElementById("secNombre").value = p.Nombre_Cliente;
-      document.getElementById("secDireccion").value = p.Direccion_Entrega;
-      document.getElementById("secDetalle").value = p.Detalle_Legible;
-      document.getElementById("secTotal").value = p.Total;
-      document.getElementById("modalEditarSec").classList.remove("hidden");
+      document.getElementById("tituloModalPedido").innerText = p ? `Editar Pedido ${p.ID_Pedido}` : "Cargar Nuevo Pedido Manual";
+      document.getElementById("pedId").value = p ? p.ID_Pedido : "";
+      document.getElementById("pedNombre").value = p ? p.Nombre_Cliente : "";
+      document.getElementById("pedTelefono").value = p ? p.Telefono_Cliente : "";
+      document.getElementById("pedDireccion").value = p ? p.Direccion_Entrega : "";
+      document.getElementById("pedDetalle").value = p ? p.Detalle_Legible : "";
+      document.getElementById("pedTotal").value = p ? p.Total : "";
+      document.getElementById("modalPedido").classList.remove("hidden");
     }
 
-    function cerrarModalSec() {
-      document.getElementById("modalEditarSec").classList.add("hidden");
-    }
+    async function guardarPedidoAdmin() {
+      const idPedido = document.getElementById("pedId").value.trim();
+      const nombre = document.getElementById("pedNombre").value.trim();
+      const telefono = document.getElementById("pedTelefono").value.trim();
+      const direccion = document.getElementById("pedDireccion").value.trim();
+      const detalleLegible = document.getElementById("pedDetalle").value.trim();
+      const total = Number(document.getElementById("pedTotal").value) || 0;
 
-    async function guardarEdicionSecretario() {
-      if (!pedidoActualSec) return;
+      if (!nombre || !direccion || !detalleLegible) {
+        alert("Completá cliente, dirección y el detalle del pedido.");
+        return;
+      }
+
       const payload = {
-        action: "modificar_pedido",
-        idPedido: pedidoActualSec.ID_Pedido,
-        autor: "Secretario",
-        nombre: document.getElementById("secNombre").value,
-        direccion: document.getElementById("secDireccion").value,
-        detalleLegible: document.getElementById("secDetalle").value,
-        items: JSON.parse(pedidoActualSec.Detalle_JSON || "[]"),
-        total: Number(document.getElementById("secTotal").value)
+        action: idPedido ? "modificar_pedido" : "crear_pedido",
+        idPedido,
+        autor: rolActual,
+        nombre,
+        telefono,
+        direccion,
+        detalleLegible,
+        total
       };
 
       if (API_URL !== "URL_DE_TU_APPS_SCRIPT") {
@@ -218,43 +598,346 @@
           return;
         }
       } else {
-        pedidoActualSec.Nombre_Cliente = payload.nombre;
-        pedidoActualSec.Direccion_Entrega = payload.direccion;
-        pedidoActualSec.Detalle_Legible = payload.detalleLegible;
-        pedidoActualSec.Total = payload.total;
+        if (idPedido) {
+          const idx = pedidos.findIndex(x => x.ID_Pedido === idPedido);
+          if (idx > -1) {
+            pedidos[idx] = { ...pedidos[idx], Nombre_Cliente: nombre, Telefono_Cliente: telefono, Direccion_Entrega: direccion, Detalle_Legible: detalleLegible, Total: total, Ultima_Modificacion: `Modificado por ${rolActual}` };
+          }
+        } else {
+          pedidos.unshift({
+            ID_Pedido: "PED-" + Math.floor(1000 + Math.random() * 9000),
+            Fecha_Hora: "Recién",
+            Nombre_Cliente: nombre,
+            Telefono_Cliente: telefono,
+            Direccion_Entrega: direccion,
+            Detalle_Legible: detalleLegible,
+            Total: total,
+            Estado: "Pendiente",
+            Ultima_Modificacion: `Creado por ${rolActual}`
+          });
+        }
       }
 
-      cerrarModalSec();
+      cerrarModal("modalPedido");
       cargarDatosAdmin();
     }
 
     async function cambiarEstadoPedido(idPedido, nuevoEstado, telefono, nombre) {
-      if (!confirm(`¿Pasar el pedido ${idPedido} a ENVIADO? Una vez enviado, ni vos ni el cliente podrán editar las cantidades.`)) return;
+      if (nuevoEstado === "Enviado") {
+        const ok = confirm(`¿Pasar el pedido ${idPedido} a ENVIADO?\nUna vez marcado como Enviado, quedará bloqueada su edición tanto para el Cliente como para el Secretario.`);
+        if (!ok) {
+          cargarDatosAdmin();
+          return;
+        }
+      }
 
       if (API_URL !== "URL_DE_TU_APPS_SCRIPT") {
         await fetch(API_URL, {
           method: "POST",
-          body: JSON.stringify({ action: "cambiar_estado", idPedido, nuevoEstado })
+          body: JSON.stringify({ action: "cambiar_estado", idPedido, nuevoEstado, autor: rolActual })
         });
       } else {
         const p = pedidos.find(x => x.ID_Pedido === idPedido);
-        if (p) p.Estado = nuevoEstado;
+        if (p) {
+          p.Estado = nuevoEstado;
+          p.Ultima_Modificacion = `Estado a ${nuevoEstado} por ${rolActual}`;
+        }
       }
 
       cargarDatosAdmin();
 
-      if (confirm("¿Querés avisarle por WhatsApp al cliente que su pedido ya salió a reparto?")) {
-        const msg = `🚚 ¡Hola ${nombre}! Tu pedido *${idPedido}* ya salió a reparto y está en camino.`;
+      if (nuevoEstado === "Enviado" && telefono && confirm("¿Querés avisarle por WhatsApp al cliente que su pedido ya salió a reparto?")) {
+        const msg = `🚚 ¡Hola ${nombre}! Te avisamos que tu pedido *${idPedido}* ya salió a reparto y está en camino.`;
         window.open(`https://wa.me/${String(telefono).replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`, "_blank");
       }
     }
 
-    function switchAdminTab(tab) {
-      const esPed = tab === "pedidos";
-      document.getElementById("vistaPedidos").classList.toggle("hidden", !esPed);
-      document.getElementById("vistaRecordatorios").classList.toggle("hidden", esPed);
-      document.getElementById("btnTabPedidos").className = esPed ? "py-2 rounded-lg bg-amber-500 text-slate-900" : "py-2 rounded-lg text-slate-400";
-      document.getElementById("btnTabRecordatorios").className = !esPed ? "py-2 rounded-lg bg-amber-500 text-slate-900" : "py-2 rounded-lg text-slate-400";
+    // ==========================================
+    // 4. TABLA CLIENTES (CREAR, EDITAR, RECORDAR)
+    // ==========================================
+    function renderClientes() {
+      const cont = document.getElementById("contenedorClientes");
+      if (!clientes.length) {
+        cont.innerHTML = `<p class="text-xs text-slate-400 py-8 text-center col-span-2">No hay clientes cargados.</p>`;
+        return;
+      }
+
+      cont.innerHTML = clientes.map(c => {
+        const jsonSeguro = JSON.stringify(c).replace(/'/g, "&apos;");
+        const msg = `¡Hola ${c.Nombre_Contacto} (${c.Nombre_Comercio})! 👋 Te escribimos para saber si hoy vas a necesitar tu pedido habitual (${c.Pedido_Habitual}) o si querés encargar desde el catálogo.\n\n📲 Podés repetirlo o armarlo en 1 clic acá: ${URL_APP_CLIENTE}`;
+        const urlWA = `https://wa.me/${String(c.Telefono_WhatsApp).replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`;
+
+        return `
+        <div class="bg-slate-800 border border-slate-700 p-4 rounded-2xl flex flex-col justify-between gap-3 text-xs">
+          <div>
+            <div class="flex justify-between items-start">
+              <h3 class="font-extrabold text-sm text-white">${c.Nombre_Comercio}</h3>
+              <button onclick='abrirModalCliente(${jsonSeguro})' class="text-slate-400 hover:text-amber-400 px-2 py-1 rounded-lg bg-slate-900 border border-slate-700">
+                <i class="fa-solid fa-pen"></i> Editar
+              </button>
+            </div>
+            <p class="text-slate-300 mt-1"><i class="fa-solid fa-user mr-1 text-slate-400"></i> ${c.Nombre_Contacto} • <span class="text-slate-400">${c.Telefono_WhatsApp}</span></p>
+            <p class="text-slate-400 mt-1"><i class="fa-solid fa-calendar-days mr-1"></i> Días: <b class="text-slate-200">${c.Dias_Visita}</b></p>
+            <p class="bg-slate-900 border border-slate-700 p-2 rounded-xl text-amber-400 font-semibold mt-2">
+              📦 Habitual: ${c.Pedido_Habitual}
+            </p>
+          </div>
+          <a href="${urlWA}" target="_blank" class="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-2.5 rounded-xl flex justify-center items-center gap-2 shadow">
+            <i class="fa-brands fa-whatsapp text-base"></i> Enviar Recordatorio por WhatsApp
+          </a>
+        </div>`;
+      }).join("");
+    }
+
+    function abrirModalCliente(c = null) {
+      document.getElementById("tituloModalCliente").innerText = c ? `Editar Cliente (${c.ID_Cliente})` : "Nuevo Cliente";
+      document.getElementById("cliId").value = c ? c.ID_Cliente : "";
+      document.getElementById("cliComercio").value = c ? c.Nombre_Comercio : "";
+      document.getElementById("cliContacto").value = c ? c.Nombre_Contacto : "";
+      document.getElementById("cliWhatsapp").value = c ? c.Telefono_WhatsApp : "";
+      document.getElementById("cliHabitual").value = c ? c.Pedido_Habitual : "";
+      document.getElementById("cliDias").value = c ? c.Dias_Visita : "";
+      document.getElementById("modalCliente").classList.remove("hidden");
+    }
+
+    async function guardarClienteAdmin() {
+      const payload = {
+        action: "guardar_cliente",
+        ID_Cliente: document.getElementById("cliId").value.trim(),
+        Nombre_Comercio: document.getElementById("cliComercio").value.trim(),
+        Nombre_Contacto: document.getElementById("cliContacto").value.trim(),
+        Telefono_WhatsApp: document.getElementById("cliWhatsapp").value.trim(),
+        Pedido_Habitual: document.getElementById("cliHabitual").value.trim(),
+        Dias_Visita: document.getElementById("cliDias").value.trim()
+      };
+
+      if (!payload.Nombre_Comercio || !payload.Telefono_WhatsApp) {
+        alert("Completá al menos el Nombre del Comercio y su WhatsApp.");
+        return;
+      }
+
+      if (API_URL !== "URL_DE_TU_APPS_SCRIPT") {
+        await fetch(API_URL, { method: "POST", body: JSON.stringify(payload) });
+      } else {
+        if (payload.ID_Cliente) {
+          const idx = clientes.findIndex(x => x.ID_Cliente === payload.ID_Cliente);
+          if (idx > -1) clientes[idx] = payload;
+        } else {
+          payload.ID_Cliente = "C" + Math.floor(100 + Math.random() * 900);
+          clientes.push(payload);
+        }
+      }
+
+      cerrarModal("modalCliente");
+      cargarDatosAdmin();
+    }
+
+    // ==========================================
+    // 5. TABLA PRODUCTOS Y PRECIOS RÁPIDOS (GERENTE)
+    // ==========================================
+    function filtrarRubroAdmin(rubro) {
+      filtroRubroProd = rubro;
+      renderProductosAdmin();
+    }
+
+    function renderProductosAdmin() {
+      const cont = document.getElementById("contenedorProductosAdmin");
+      const lista = filtroRubroProd === "Todos" ? productos : productos.filter(p => p.Rubro === filtroRubroProd);
+
+      if (!lista.length) {
+        cont.innerHTML = `<p class="text-xs text-slate-400 py-8 text-center">No hay productos en este rubro.</p>`;
+        return;
+      }
+
+      cont.innerHTML = lista.map(p => {
+        const activo = String(p.Activo).toUpperCase() === "TRUE" || p.Activo === true;
+        const jsonSeguro = JSON.stringify(p).replace(/'/g, "&apos;");
+        return `
+        <div class="bg-slate-800 border ${activo ? 'border-slate-700' : 'border-red-900/60 opacity-75'} p-3.5 rounded-2xl flex flex-col sm:flex-row justify-between sm:items-center gap-3 text-xs">
+          <div class="space-y-1">
+            <div class="flex items-center gap-2">
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300">${p.Rubro}</span>
+              <span class="text-slate-400 font-mono">${p.ID_Producto}</span>
+              <span class="text-slate-500">• ${p.Categoria || 'General'}</span>
+            </div>
+            <h3 class="font-extrabold text-sm text-white">${p.Nombre}</h3>
+            <p class="text-amber-400 font-semibold">📌 ${p.Calibre_Variante}</p>
+          </div>
+
+          <!-- CONTROLES DE EDICIÓN RÁPIDA DE PRECIO Y STOCK -->
+          <div class="flex flex-wrap items-center gap-2 bg-slate-900 p-2 rounded-xl border border-slate-700">
+            <div>
+              <label class="block text-[10px] text-slate-400">Precio ($)</label>
+              <input id="fastPrecio-${p.ID_Producto}" type="number" value="${p.Precio}" class="w-24 bg-slate-800 border border-slate-600 rounded-lg px-2 py-1 font-extrabold text-white text-xs" />
+            </div>
+            <div>
+              <label class="block text-[10px] text-slate-400">Stock</label>
+              <input id="fastStock-${p.ID_Producto}" type="number" value="${p.Stock_Disponible}" class="w-16 bg-slate-800 border border-slate-600 rounded-lg px-2 py-1 font-bold text-white text-xs" />
+            </div>
+            <div class="flex flex-col items-center px-1">
+              <label class="text-[10px] text-slate-400">Activo</label>
+              <input id="fastActivo-${p.ID_Producto}" type="checkbox" ${activo ? 'checked' : ''} class="w-4 h-4 accent-amber-500 mt-1" />
+            </div>
+            <button onclick="guardarPrecioRapido('${p.ID_Producto}', this)" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3 py-2 rounded-xl shadow flex items-center gap-1" title="Guardar Precio y Stock">
+              <i class="fa-solid fa-check"></i> Guardar
+            </button>
+            <button onclick='abrirModalProducto(${jsonSeguro})' class="bg-slate-700 hover:bg-slate-600 text-slate-200 px-2.5 py-2 rounded-xl" title="Editar todos los datos del producto">
+              <i class="fa-solid fa-pen"></i>
+            </button>
+          </div>
+        </div>`;
+      }).join("");
+    }
+
+    async function guardarPrecioRapido(idProd, btn) {
+      const nuevoPrecio = Number(document.getElementById(`fastPrecio-${idProd}`).value) || 0;
+      const nuevoStock = Number(document.getElementById(`fastStock-${idProd}`).value) || 0;
+      const nuevoActivo = document.getElementById(`fastActivo-${idProd}`).checked;
+
+      const originalHTML = btn.innerHTML;
+      btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i>`;
+
+      if (API_URL !== "URL_DE_TU_APPS_SCRIPT") {
+        await fetch(API_URL, {
+          method: "POST",
+          body: JSON.stringify({
+            action: "actualizar_precio_rapido",
+            ID_Producto: idProd,
+            Precio: nuevoPrecio,
+            Stock_Disponible: nuevoStock,
+            Activo: nuevoActivo
+          })
+        });
+      } else {
+        const prod = productos.find(x => x.ID_Producto === idProd);
+        if (prod) {
+          prod.Precio = nuevoPrecio;
+          prod.Stock_Disponible = nuevoStock;
+          prod.Activo = nuevoActivo;
+        }
+      }
+
+      btn.innerHTML = `<i class="fa-solid fa-check-double"></i> Listo`;
+      setTimeout(() => {
+        btn.innerHTML = originalHTML;
+        renderProductosAdmin();
+      }, 900);
+    }
+
+    function abrirModalProducto(p = null) {
+      document.getElementById("tituloModalProducto").innerText = p ? `Editar Producto (${p.ID_Producto})` : "Crear Nuevo Producto";
+      document.getElementById("prodId").value = p ? p.ID_Producto : "";
+      document.getElementById("prodRubro").value = p ? p.Rubro : "Pollería";
+      document.getElementById("prodCategoria").value = p ? p.Categoria : "";
+      document.getElementById("prodNombre").value = p ? p.Nombre : "";
+      document.getElementById("prodCalibre").value = p ? p.Calibre_Variante : "";
+      document.getElementById("prodPrecio").value = p ? p.Precio : "";
+      document.getElementById("prodStock").value = p ? p.Stock_Disponible : 20;
+      document.getElementById("prodActivo").checked = p ? (String(p.Activo).toUpperCase() === "TRUE" || p.Activo === true) : true;
+      document.getElementById("modalProducto").classList.remove("hidden");
+    }
+
+    async function guardarProductoCompleto() {
+      const payload = {
+        action: "guardar_producto",
+        ID_Producto: document.getElementById("prodId").value.trim(),
+        Rubro: document.getElementById("prodRubro").value,
+        Categoria: document.getElementById("prodCategoria").value.trim() || "General",
+        Nombre: document.getElementById("prodNombre").value.trim(),
+        Calibre_Variante: document.getElementById("prodCalibre").value.trim(),
+        Precio: Number(document.getElementById("prodPrecio").value) || 0,
+        Stock_Disponible: Number(document.getElementById("prodStock").value) || 0,
+        Activo: document.getElementById("prodActivo").checked
+      };
+
+      if (!payload.Nombre || !payload.Calibre_Variante) {
+        alert("Completá el nombre y el calibre/presentación del producto.");
+        return;
+      }
+
+      if (API_URL !== "URL_DE_TU_APPS_SCRIPT") {
+        await fetch(API_URL, { method: "POST", body: JSON.stringify(payload) });
+      } else {
+        if (payload.ID_Producto) {
+          const idx = productos.findIndex(x => x.ID_Producto === payload.ID_Producto);
+          if (idx > -1) productos[idx] = payload;
+        } else {
+          payload.ID_Producto = "P" + Math.floor(10 + Math.random() * 89);
+          productos.push(payload);
+        }
+      }
+
+      cerrarModal("modalProducto");
+      cargarDatosAdmin();
+    }
+
+    // ==========================================
+    // 6. TABLA CONOCIMIENTO IA (GERENTE)
+    // ==========================================
+    function renderConocimientoIA() {
+      const cont = document.getElementById("contenedorConocimientoIA");
+      if (!conocimiento.length) {
+        cont.innerHTML = `<p class="text-xs text-slate-400 py-8 text-center">No hay reglas cargadas para la IA.</p>`;
+        return;
+      }
+
+      cont.innerHTML = conocimiento.map(r => {
+        const activo = String(r.Activo).toUpperCase() === "TRUE" || r.Activo === true;
+        const jsonSeguro = JSON.stringify(r).replace(/'/g, "&apos;");
+        return `
+        <div class="bg-slate-800 border ${activo ? 'border-slate-700' : 'border-red-900/50 opacity-60'} p-4 rounded-2xl flex justify-between items-start gap-3 text-xs">
+          <div class="space-y-1">
+            <div class="flex items-center gap-2">
+              <span class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-500/20 text-amber-300">${r.Topico}</span>
+              <span class="text-slate-400 font-mono">${r.ID_Regla}</span>
+              <span class="text-[10px] font-bold ${activo ? 'text-emerald-400' : 'text-red-400'}">${activo ? '● Activa' : '○ Inactiva'}</span>
+            </div>
+            <p class="text-slate-200 leading-relaxed pt-1">${r.Instruccion}</p>
+          </div>
+          <button onclick='abrirModalIA(${jsonSeguro})' class="bg-slate-900 hover:bg-slate-700 border border-slate-700 text-amber-400 px-3 py-2 rounded-xl font-bold whitespace-nowrap">
+            <i class="fa-solid fa-pen mr-1"></i> Editar
+          </button>
+        </div>`;
+      }).join("");
+    }
+
+    function abrirModalIA(r = null) {
+      document.getElementById("tituloModalIA").innerText = r ? `Editar Regla (${r.ID_Regla})` : "Nueva Regla para Gemini IA";
+      document.getElementById("iaId").value = r ? r.ID_Regla : "";
+      document.getElementById("iaTopico").value = r ? r.Topico : "Calibres_y_Productos";
+      document.getElementById("iaInstruccion").value = r ? r.Instruccion : "";
+      document.getElementById("iaActivo").checked = r ? (String(r.Activo).toUpperCase() === "TRUE" || r.Activo === true) : true;
+      document.getElementById("modalIA").classList.remove("hidden");
+    }
+
+    async function guardarReglaIA() {
+      const payload = {
+        action: "guardar_conocimiento",
+        ID_Regla: document.getElementById("iaId").value.trim(),
+        Topico: document.getElementById("iaTopico").value,
+        Instruccion: document.getElementById("iaInstruccion").value.trim(),
+        Activo: document.getElementById("iaActivo").checked
+      };
+
+      if (!payload.Instruccion) {
+        alert("Escribí la instrucción o regla de negocio para la IA.");
+        return;
+      }
+
+      if (API_URL !== "URL_DE_TU_APPS_SCRIPT") {
+        await fetch(API_URL, { method: "POST", body: JSON.stringify(payload) });
+      } else {
+        if (payload.ID_Regla) {
+          const idx = conocimiento.findIndex(x => x.ID_Regla === payload.ID_Regla);
+          if (idx > -1) conocimiento[idx] = payload;
+        } else {
+          payload.ID_Regla = "R-" + Math.floor(10 + Math.random() * 89);
+          conocimiento.push(payload);
+        }
+      }
+
+      cerrarModal("modalIA");
+      cargarDatosAdmin();
     }
   </script>
 </body>
