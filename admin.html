@@ -3,9 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Admin ABM & Despacho - Central de Pedidos</title>
+  <title>Admin Central ABM, Mapa GPS & Difusión Masiva</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
@@ -13,14 +15,16 @@
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen font-sans pb-20">
 
-  <!-- LOGIN POR ROL (GERENTE VS SECRETARIO) -->
+  <!-- ========================================== -->
+  <!-- PANTALLA DE LOGIN POR ROL                  -->
+  <!-- ========================================== -->
   <div id="modalLogin" class="fixed inset-0 bg-slate-950/95 z-50 flex items-center justify-center p-4">
     <div class="bg-slate-800 border border-slate-700 w-full max-w-sm rounded-3xl p-6 shadow-2xl space-y-4">
       <div class="text-center">
         <div class="w-12 h-12 bg-amber-500/20 text-amber-400 rounded-2xl flex items-center justify-center mx-auto mb-2 text-xl">
           <i class="fa-solid fa-user-shield"></i>
         </div>
-        <h2 class="text-lg font-extrabold text-white">Ingreso al Panel ABM</h2>
+        <h2 class="text-lg font-extrabold text-white">Ingreso al Panel Central ABM</h2>
         <p class="text-xs text-slate-400">Seleccioná tu rol para habilitar tus permisos</p>
       </div>
 
@@ -40,29 +44,33 @@
       </div>
 
       <button onclick="confirmarLogin()" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold py-3 rounded-xl text-sm shadow-lg transition">
-        Ingresar
+        Ingresar al Sistema
       </button>
     </div>
   </div>
 
-  <!-- HEADER -->
+  <!-- ========================================== -->
+  <!-- HEADER PRINCIPAL                           -->
+  <!-- ========================================== -->
   <header class="bg-slate-800 border-b border-slate-700 p-3.5 sticky top-0 z-30 shadow-lg">
     <div class="max-w-6xl mx-auto flex justify-between items-center gap-2">
       <div>
         <div class="flex items-center gap-2">
-          <h1 class="text-base font-extrabold text-white"><i class="fa-solid fa-boxes-stacked text-amber-400 mr-1"></i> Panel Central ABM</h1>
+          <h1 class="text-base font-extrabold text-white">
+            <i class="fa-solid fa-boxes-stacked text-amber-400 mr-1"></i> Panel Central ABM
+          </h1>
           <span id="badgeRolActual" class="text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40">
             Secretario
           </span>
         </div>
-        <p class="text-[11px] text-slate-400">Alta, Baja y Modificación • Despacho a Repartidores y Control de Cobros</p>
+        <p class="text-[11px] text-slate-400">Alta, Baja y Modificación • Mapa GPS • Difusión Masiva • Despacho y Cobros</p>
       </div>
 
       <div class="flex items-center gap-2">
         <a href="repartidor.html" target="_blank" class="bg-indigo-600 hover:bg-indigo-500 px-3 py-2 rounded-xl text-xs font-bold text-white flex items-center gap-1 shadow">
           <i class="fa-solid fa-truck-fast"></i> <span class="hidden sm:inline">Vista Repartidor</span>
         </a>
-        <button onclick="cargarDatosAdmin()" class="bg-slate-700 hover:bg-slate-600 px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1">
+        <button onclick="cargarDatosAdmin()" class="bg-slate-700 hover:bg-slate-600 px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1" title="Sincronizar con Google Sheets">
           <i id="iconoSync" class="fa-solid fa-rotate"></i> <span class="hidden sm:inline">Actualizar</span>
         </button>
         <button onclick="abrirCambioRol()" class="bg-slate-900 hover:bg-slate-700 border border-slate-600 px-3 py-2 rounded-xl text-xs font-bold text-amber-400 flex items-center gap-1">
@@ -71,13 +79,16 @@
       </div>
     </div>
 
-    <!-- PESTAÑAS -->
+    <!-- BARRA DE 5 PESTAÑAS -->
     <div class="max-w-6xl mx-auto mt-3 flex gap-1.5 overflow-x-auto no-scrollbar bg-slate-900 p-1.5 rounded-2xl text-xs font-bold">
-      <button id="tabBtn-pedidos" onclick="switchTab('pedidos')" class="tab-btn flex-1 py-2 px-3 rounded-xl bg-amber-500 text-slate-950 whitespace-nowrap transition font-extrabold">
-        📦 Pedidos, Reparto y Cobros
+      <button id="tabBtn-pedidos" onclick="switchTab('pedidos')" class="tab-btn flex-1 py-2 px-3 rounded-xl bg-amber-500 text-slate-950 whitespace-nowrap transition font-extrabold shadow">
+        📦 Pedidos, Mapa y Cobros
+      </button>
+      <button id="tabBtn-difusion" onclick="switchTab('difusion')" class="tab-btn flex-1 py-2 px-3 rounded-xl text-slate-400 whitespace-nowrap transition">
+        📢 Difusión Masiva / Promos
       </button>
       <button id="tabBtn-clientes" onclick="switchTab('clientes')" class="tab-btn flex-1 py-2 px-3 rounded-xl text-slate-400 whitespace-nowrap transition">
-        📲 Clientes (ABM + WhatsApp)
+        📲 Clientes (ABM + Recordatorios)
       </button>
       <button id="tabBtn-productos" onclick="switchTab('productos')" class="tab-btn flex-1 py-2 px-3 rounded-xl text-slate-400 whitespace-nowrap transition">
         🏷️ Actualizar Precios y Productos <i id="lockProd" class="fa-solid fa-lock text-[10px] ml-1 text-amber-400"></i>
@@ -91,10 +102,10 @@
   <main class="max-w-6xl mx-auto p-3 space-y-4">
 
     <!-- ========================================== -->
-    <!-- PESTAÑA 1: PEDIDOS, REPARTO Y COBROS       -->
+    <!-- PESTAÑA 1: PEDIDOS, MAPA GPS Y COBROS      -->
     <!-- ========================================== -->
     <section id="vista-pedidos" class="space-y-3">
-      <!-- Resumen de Caja y Reparto -->
+      <!-- 4 Tarjetas de Resumen de Caja y Reparto -->
       <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
         <div class="bg-slate-800 border border-slate-700 p-3 rounded-2xl">
           <p class="text-slate-400">Pendientes de Armar</p>
@@ -102,7 +113,7 @@
         </div>
         <div class="bg-slate-800 border border-slate-700 p-3 rounded-2xl">
           <p class="text-slate-400">En Camión (En Reparto)</p>
-          <p id="statEnReparto" class="text-lg font-extrabold text-blue-400">0</p>
+          <p id="statEnReparto" class="text-lg font-extrabold text-indigo-400">0</p>
         </div>
         <div class="bg-slate-800 border border-slate-700 p-3 rounded-2xl">
           <p class="text-slate-400">Por Cobrar en Calle</p>
@@ -114,6 +125,7 @@
         </div>
       </div>
 
+      <!-- Filtros de Estado + Botón Nuevo Pedido Manual -->
       <div class="flex flex-wrap justify-between items-center gap-2 bg-slate-800/80 border border-slate-700 p-3 rounded-2xl">
         <div class="flex gap-1.5 text-xs font-bold overflow-x-auto no-scrollbar">
           <button onclick="filtrarEstadoPedido('Todos')" class="px-3 py-1.5 rounded-lg bg-slate-700 text-white">Todos</button>
@@ -121,6 +133,7 @@
           <button onclick="filtrarEstadoPedido('En Preparación')" class="px-3 py-1.5 rounded-lg bg-blue-500/20 text-blue-300">🔪 En Preparación</button>
           <button onclick="filtrarEstadoPedido('Enviado')" class="px-3 py-1.5 rounded-lg bg-indigo-500/20 text-indigo-300">🚚 En Reparto</button>
           <button onclick="filtrarEstadoPedido('Entregado')" class="px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-300">✅ Entregados</button>
+          <button onclick="filtrarEstadoPedido('Cancelado')" class="px-3 py-1.5 rounded-lg bg-red-500/20 text-red-300">❌ Cancelados</button>
         </div>
         <button onclick="abrirModalPedido()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold px-3.5 py-2 rounded-xl text-xs shadow flex items-center gap-1.5">
           <i class="fa-solid fa-plus"></i> Nuevo Pedido Manual
@@ -131,13 +144,81 @@
     </section>
 
     <!-- ========================================== -->
-    <!-- PESTAÑA 2: CLIENTES (ABM + WHATSAPP)       -->
+    <!-- PESTAÑA 2: DIFUSIÓN MASIVA / PROMOS WA     -->
+    <!-- ========================================== -->
+    <section id="vista-difusion" class="hidden space-y-4">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Armador del Flyer y Mensaje -->
+        <div class="bg-slate-800 border border-slate-700 p-4 rounded-2xl space-y-3 text-xs">
+          <h2 class="text-sm font-extrabold text-amber-400">
+            <i class="fa-solid fa-bullhorn mr-1"></i> 1. Armar Promoción / Flyer para WhatsApp
+          </h2>
+          <p class="text-slate-400">
+            Subí la imagen promocional, el título y el detalle de precios. Al publicarla aparecerá en el catálogo de los clientes y podrás enviarla a toda la lista de difusión.
+          </p>
+
+          <div>
+            <label class="font-bold text-slate-300">Imagen del Flyer / Promo (JPG o PNG)</label>
+            <input id="promoFile" type="file" accept="image/*" onchange="previsualizarFlyer(this)" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 mt-1 text-xs" />
+            <img id="previewFlyer" src="" class="hidden w-full max-h-48 object-contain rounded-xl mt-2 border border-slate-700 bg-slate-950 p-1" />
+          </div>
+
+          <div>
+            <label class="font-bold text-slate-300">Título Gancho *</label>
+            <input id="promoTitulo" type="text" value="🇦🇷🐔 Precios mundiales 🔥 Comprá más, pagá menos." class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 mt-1" />
+          </div>
+
+          <div>
+            <label class="font-bold text-slate-300">Detalle de Ofertas y Precios *</label>
+            <textarea id="promoDetalle" rows="4" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 mt-1">🔥 Carne molida vacuna a $10.900 el kg.
+🥩 Matambre a $11.500 el kg.
+🐔 Cajón de Pollo Óptimo N7 a $56.000.
+🐟 Cajón de filet en oferta ideal para el freezer.</textarea>
+          </div>
+
+          <div>
+            <label class="font-bold text-slate-300">Precio Destacado ($) (Opcional)</label>
+            <input id="promoPrecio" type="number" placeholder="Ej: 56000" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 mt-1" />
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2">
+            <button id="btnGuardarPromo" onclick="publicarYGuardarPromo()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold py-3 rounded-xl shadow flex justify-center items-center gap-1.5">
+              <i class="fa-solid fa-cloud-arrow-up"></i> Publicar Promo en App
+            </button>
+            <button onclick="compartirFlyerNativo()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold py-3 rounded-xl shadow flex justify-center items-center gap-1.5">
+              <i class="fa-brands fa-whatsapp text-base"></i> Compartir Imagen + Texto
+            </button>
+          </div>
+        </div>
+
+        <!-- Consola de Disparo Masivo a Clientes -->
+        <div class="bg-slate-800 border border-slate-700 p-4 rounded-2xl space-y-3 text-xs flex flex-col justify-between">
+          <div>
+            <div class="flex justify-between items-center">
+              <h2 class="text-sm font-extrabold text-emerald-400">
+                <i class="fa-brands fa-whatsapp mr-1"></i> 2. Consola de Envío Masivo a Clientes
+              </h2>
+              <span id="contadorEnvios" class="bg-emerald-950 text-emerald-300 border border-emerald-700 px-2.5 py-1 rounded-full font-bold">0 enviados</span>
+            </div>
+            <p class="text-slate-400 mt-1">
+              Tocá <b>"Enviar Promo"</b> en cada fila para abrir el WhatsApp del cliente con su nombre, el flyer, la lista de ofertas y el link al catálogo.
+            </p>
+            <div id="listaDifusionClientes" class="space-y-2 mt-3 max-h-[420px] overflow-y-auto pr-1"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- PESTAÑA 3: CLIENTES (ABM + RECORDATORIOS)  -->
     <!-- ========================================== -->
     <section id="vista-clientes" class="hidden space-y-3">
       <div class="bg-slate-800 border border-slate-700 p-3.5 rounded-2xl flex flex-wrap justify-between items-center gap-2">
         <div class="text-xs">
-          <p class="font-bold text-amber-400 text-sm"><i class="fa-brands fa-whatsapp mr-1"></i> Cartera de Clientes (Alta, Baja, Modificación y Recordatorios)</p>
-          <p class="text-slate-400">Recordales su pedido por WhatsApp en 1 clic, editá sus datos o eliminá clientes inactivos.</p>
+          <p class="font-bold text-amber-400 text-sm">
+            <i class="fa-brands fa-whatsapp mr-1"></i> Cartera de Clientes (Alta, Baja, Modificación y Recordatorio Habitual)
+          </p>
+          <p class="text-slate-400">Recordales su pedido habitual por WhatsApp en 1 clic, editá sus datos o eliminá clientes.</p>
         </div>
         <button onclick="abrirModalCliente()" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold px-3.5 py-2 rounded-xl text-xs shadow flex items-center gap-1.5">
           <i class="fa-solid fa-user-plus"></i> + Nuevo Cliente
@@ -148,21 +229,24 @@
     </section>
 
     <!-- ========================================== -->
-    <!-- PESTAÑA 3: PRODUCTOS Y PRECIOS (ABM)       -->
+    <!-- PESTAÑA 4: PRODUCTOS Y PRECIOS (ABM)       -->
     <!-- ========================================== -->
     <section id="vista-productos" class="hidden space-y-3">
       <div class="bg-slate-800 border border-slate-700 p-3.5 rounded-2xl flex flex-wrap justify-between items-center gap-2">
         <div class="text-xs">
-          <p class="font-bold text-amber-400 text-sm"><i class="fa-solid fa-tags mr-1"></i> Actualizar Precios y Productos (ABM Completo)</p>
-          <p class="text-slate-400">Modificá precios rápidos en la fila, creá nuevos artículos o eliminá productos con el botón rojo.</p>
+          <p class="font-bold text-amber-400 text-sm">
+            <i class="fa-solid fa-tags mr-1"></i> Actualizar Precios, Stock y Catálogo (ABM Completo - Modo Gerente)
+          </p>
+          <p class="text-slate-400">Modificá precios y stock directamente en la fila, creá nuevos productos o eliminá artículos.</p>
         </div>
         <button onclick="abrirModalProducto()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold px-3.5 py-2 rounded-xl text-xs shadow flex items-center gap-1.5">
           <i class="fa-solid fa-box-open"></i> + Nuevo Producto
         </button>
       </div>
 
+      <!-- Filtro de Rubros en Admin -->
       <div class="flex gap-2 overflow-x-auto no-scrollbar text-xs font-bold">
-        <button onclick="filtrarRubroAdmin('Todos')" class="px-3 py-1.5 rounded-xl bg-slate-700 text-white">Todos</button>
+        <button onclick="filtrarRubroAdmin('Todos')" class="px-3 py-1.5 rounded-xl bg-slate-700 text-white">Todos los Rubros</button>
         <button onclick="filtrarRubroAdmin('Pollería')" class="px-3 py-1.5 rounded-xl bg-slate-800 border border-slate-700 text-slate-300">🐔 Pollería</button>
         <button onclick="filtrarRubroAdmin('Carnicería')" class="px-3 py-1.5 rounded-xl bg-slate-800 border border-slate-700 text-slate-300">🥩 Carnicería</button>
         <button onclick="filtrarRubroAdmin('Panadería')" class="px-3 py-1.5 rounded-xl bg-slate-800 border border-slate-700 text-slate-300">🥖 Panadería</button>
@@ -173,13 +257,15 @@
     </section>
 
     <!-- ========================================== -->
-    <!-- PESTAÑA 4: CONOCIMIENTO IA (ABM)           -->
+    <!-- PESTAÑA 5: CONOCIMIENTO IA (ABM)           -->
     <!-- ========================================== -->
     <section id="vista-ia" class="hidden space-y-3">
       <div class="bg-slate-800 border border-slate-700 p-3.5 rounded-2xl flex flex-wrap justify-between items-center gap-2">
         <div class="text-xs">
-          <p class="font-bold text-amber-400 text-sm"><i class="fa-solid fa-brain mr-1"></i> Base de Conocimiento de la IA (ABM)</p>
-          <p class="text-slate-400">Agregá, editá o eliminá reglas de calibres, horarios y promociones para el asistente.</p>
+          <p class="font-bold text-amber-400 text-sm">
+            <i class="fa-solid fa-brain mr-1"></i> Base de Conocimiento de la IA (ABM Completo)
+          </p>
+          <p class="text-slate-400">Agregá, editá o eliminá reglas de calibres, horarios y promociones para el asistente virtual.</p>
         </div>
         <button onclick="abrirModalIA()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold px-3.5 py-2 rounded-xl text-xs shadow flex items-center gap-1.5">
           <i class="fa-solid fa-plus"></i> + Nueva Regla IA
@@ -191,81 +277,131 @@
 
   </main>
 
-  <!-- MODAL 1: CREAR / EDITAR PEDIDO -->
+  <!-- ========================================== -->
+  <!-- MODAL 1: CREAR / EDITAR PEDIDO COMPLETO    -->
+  <!-- ========================================== -->
   <div id="modalPedido" class="fixed inset-0 bg-black/80 z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-slate-800 border border-slate-700 w-full max-w-md rounded-2xl p-5 space-y-3 text-xs max-h-[90vh] overflow-y-auto">
+    <div class="bg-slate-800 border border-slate-700 w-full max-w-lg rounded-2xl p-5 space-y-3 text-xs max-h-[92vh] overflow-y-auto">
       <div class="flex justify-between items-center border-b border-slate-700 pb-2">
-        <h3 class="font-bold text-sm text-amber-400" id="tituloModalPedido">Pedido</h3>
+        <h3 class="font-bold text-sm text-amber-400" id="tituloModalPedido">Cargar / Editar Pedido</h3>
         <button onclick="cerrarModal('modalPedido')" class="text-slate-400 text-xl">&times;</button>
       </div>
       <input type="hidden" id="pedId" />
-      <div>
-        <label class="text-slate-400 font-semibold">Cliente / Comercio *</label>
-        <input id="pedNombre" type="text" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 mt-1" />
-      </div>
-      <div>
-        <label class="text-slate-400 font-semibold">Teléfono WhatsApp *</label>
-        <input id="pedTelefono" type="text" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 mt-1" />
-      </div>
-      <div>
-        <label class="text-slate-400 font-semibold">Dirección de Entrega *</label>
-        <input id="pedDireccion" type="text" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 mt-1" />
-      </div>
-      <div>
-        <label class="text-slate-400 font-semibold">Detalle del Pedido *</label>
-        <textarea id="pedDetalle" rows="3" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 mt-1"></textarea>
-      </div>
+
       <div class="grid grid-cols-2 gap-2">
         <div>
-          <label class="text-slate-400 font-semibold">Total ($) *</label>
-          <input id="pedTotal" type="number" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 mt-1" />
+          <label class="text-slate-400 font-semibold">Cliente / Comercio *</label>
+          <input id="pedNombre" type="text" placeholder="Ej: Federico Godoy" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 mt-1" />
         </div>
         <div>
-          <label class="text-slate-400 font-semibold">Repartidor Asignado</label>
-          <select id="pedRepartidor" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 mt-1">
+          <label class="text-slate-400 font-semibold">Teléfono WhatsApp *</label>
+          <input id="pedTelefono" type="text" placeholder="Ej: 5493875112233" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 mt-1" />
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-2">
+        <div>
+          <label class="text-slate-400 font-semibold">Localidad *</label>
+          <input id="pedLocalidad" type="text" placeholder="Ej: General Güemes" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 mt-1" />
+        </div>
+        <div>
+          <label class="text-slate-400 font-semibold">Barrio *</label>
+          <input id="pedBarrio" type="text" placeholder="Ej: Barrio Docente" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 mt-1" />
+        </div>
+      </div>
+
+      <div class="grid grid-cols-3 gap-2">
+        <div class="col-span-2">
+          <label class="text-slate-400 font-semibold">Calle y Número / Mza y Casa *</label>
+          <input id="pedCalleNumero" type="text" placeholder="Ej: Mza 17B Casa 11" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 mt-1" />
+        </div>
+        <div>
+          <label class="text-slate-400 font-semibold">Zona *</label>
+          <select id="pedZona" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-2 py-2 mt-1">
+            <option value="Centro">Centro</option>
+            <option value="Norte">Norte</option>
+            <option value="Sur">Sur</option>
+            <option value="Este">Este</option>
+            <option value="Oeste">Oeste</option>
+          </select>
+        </div>
+      </div>
+
+      <div>
+        <label class="text-slate-400 font-semibold">Referencia (Opcional)</label>
+        <input id="pedReferencia" type="text" placeholder="Ej: Portón negro frente a la plaza" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 mt-1" />
+      </div>
+
+      <div class="grid grid-cols-2 gap-2">
+        <div>
+          <label class="text-slate-400 font-semibold">Latitud GPS (Opcional)</label>
+          <input id="pedLat" type="text" placeholder="Ej: -24.6644" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 mt-1" />
+        </div>
+        <div>
+          <label class="text-slate-400 font-semibold">Longitud GPS (Opcional)</label>
+          <input id="pedLng" type="text" placeholder="Ej: -65.0475" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 mt-1" />
+        </div>
+      </div>
+
+      <div>
+        <label class="text-slate-400 font-semibold">Detalle del Pedido (Cajones, Calibres, Cantidades) *</label>
+        <textarea id="pedDetalle" rows="3" placeholder="Ej: 2x Cajón Pollo 20kg [Calibre N7] | 1x Suprema 5kg" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 mt-1"></textarea>
+      </div>
+
+      <div class="grid grid-cols-3 gap-2">
+        <div>
+          <label class="text-slate-400 font-semibold">Total ($) *</label>
+          <input id="pedTotal" type="number" placeholder="56000" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 mt-1" />
+        </div>
+        <div>
+          <label class="text-slate-400 font-semibold">Repartidor</label>
+          <select id="pedRepartidor" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-2 py-2 mt-1">
             <option value="Repartidor 1">Repartidor 1</option>
             <option value="Repartidor 2">Repartidor 2</option>
             <option value="Mostrador / Retira">Mostrador / Retira</option>
           </select>
         </div>
+        <div>
+          <label class="text-slate-400 font-semibold">Fecha Entrega</label>
+          <input id="pedFechaEntrega" type="text" placeholder="Hoy" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 mt-1" />
+        </div>
       </div>
-      <div>
-        <label class="text-slate-400 font-semibold">Fecha de Entrega Programada</label>
-        <input id="pedFechaEntrega" type="text" placeholder="Ej: Hoy / 05/11/2026" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 mt-1" />
-      </div>
+
       <button onclick="guardarPedidoAdmin()" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold py-3 rounded-xl mt-2">
         Guardar Pedido
       </button>
     </div>
   </div>
 
-  <!-- MODAL 2: CREAR / EDITAR CLIENTE -->
+  <!-- ========================================== -->
+  <!-- MODAL 2: CREAR / EDITAR CLIENTE            -->
+  <!-- ========================================== -->
   <div id="modalCliente" class="fixed inset-0 bg-black/80 z-50 hidden flex items-center justify-center p-4">
     <div class="bg-slate-800 border border-slate-700 w-full max-w-md rounded-2xl p-5 space-y-3 text-xs">
       <div class="flex justify-between items-center border-b border-slate-700 pb-2">
-        <h3 class="font-bold text-sm text-emerald-400" id="tituloModalCliente">Cliente</h3>
+        <h3 class="font-bold text-sm text-emerald-400" id="tituloModalCliente">Datos del Cliente</h3>
         <button onclick="cerrarModal('modalCliente')" class="text-slate-400 text-xl">&times;</button>
       </div>
       <input type="hidden" id="cliId" />
       <div>
-        <label class="text-slate-400 font-semibold">Nombre del Comercio *</label>
-        <input id="cliComercio" type="text" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 mt-1" />
+        <label class="text-slate-400 font-semibold">Nombre del Comercio / Negocio *</label>
+        <input id="cliComercio" type="text" placeholder="Ej: Rotisería El Pollo Loco" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 mt-1" />
       </div>
       <div>
         <label class="text-slate-400 font-semibold">Nombre de Contacto *</label>
-        <input id="cliContacto" type="text" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 mt-1" />
+        <input id="cliContacto" type="text" placeholder="Ej: Juan Pérez" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 mt-1" />
       </div>
       <div>
-        <label class="text-slate-400 font-semibold">Teléfono WhatsApp (ej: 549387...) *</label>
-        <input id="cliWhatsapp" type="text" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 mt-1" />
+        <label class="text-slate-400 font-semibold">Teléfono WhatsApp (ej: 5493875112233) *</label>
+        <input id="cliWhatsapp" type="text" placeholder="Ej: 5493875112233" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 mt-1" />
       </div>
       <div>
         <label class="text-slate-400 font-semibold">Pedido Habitual *</label>
-        <input id="cliHabitual" type="text" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 mt-1" />
+        <input id="cliHabitual" type="text" placeholder="Ej: 3 cajones Calibre 8" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 mt-1" />
       </div>
       <div>
         <label class="text-slate-400 font-semibold">Días de Visita / Reparto *</label>
-        <input id="cliDias" type="text" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 mt-1" />
+        <input id="cliDias" type="text" placeholder="Ej: Lunes, Jueves" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 mt-1" />
       </div>
       <button onclick="guardarClienteAdmin()" class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold py-3 rounded-xl mt-2">
         Guardar Cliente
@@ -273,11 +409,13 @@
     </div>
   </div>
 
-  <!-- MODAL 3: CREAR / EDITAR PRODUCTO -->
+  <!-- ========================================== -->
+  <!-- MODAL 3: CREAR / EDITAR PRODUCTO           -->
+  <!-- ========================================== -->
   <div id="modalProducto" class="fixed inset-0 bg-black/80 z-50 hidden flex items-center justify-center p-4">
     <div class="bg-slate-800 border border-slate-700 w-full max-w-md rounded-2xl p-5 space-y-3 text-xs max-h-[90vh] overflow-y-auto">
       <div class="flex justify-between items-center border-b border-slate-700 pb-2">
-        <h3 class="font-bold text-sm text-amber-400" id="tituloModalProducto">Producto</h3>
+        <h3 class="font-bold text-sm text-amber-400" id="tituloModalProducto">Ficha de Producto</h3>
         <button onclick="cerrarModal('modalProducto')" class="text-slate-400 text-xl">&times;</button>
       </div>
       <input type="hidden" id="prodId" />
@@ -293,30 +431,30 @@
         </div>
         <div>
           <label class="text-slate-400 font-semibold">Categoría *</label>
-          <input id="prodCategoria" type="text" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 mt-1" />
+          <input id="prodCategoria" type="text" placeholder="Ej: Cajones de Pollo" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 mt-1" />
         </div>
       </div>
       <div>
         <label class="text-slate-400 font-semibold">Nombre del Producto *</label>
-        <input id="prodNombre" type="text" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 mt-1" />
+        <input id="prodNombre" type="text" placeholder="Ej: Cajón de Pollo Óptimo 20kg" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 mt-1" />
       </div>
       <div>
-        <label class="text-slate-400 font-semibold">Calibre / Variante *</label>
-        <input id="prodCalibre" type="text" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 mt-1" />
+        <label class="text-slate-400 font-semibold">Calibre / Variante / Presentación *</label>
+        <input id="prodCalibre" type="text" placeholder="Ej: Calibre N7 (Grande / Trozar)" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 mt-1" />
       </div>
       <div class="grid grid-cols-2 gap-2">
         <div>
           <label class="text-slate-400 font-semibold">Precio ($) *</label>
-          <input id="prodPrecio" type="number" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 mt-1" />
+          <input id="prodPrecio" type="number" placeholder="56000" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 mt-1" />
         </div>
         <div>
           <label class="text-slate-400 font-semibold">Stock Disponible *</label>
-          <input id="prodStock" type="number" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 mt-1" />
+          <input id="prodStock" type="number" placeholder="25" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 mt-1" />
         </div>
       </div>
       <div class="flex items-center gap-2 pt-1">
         <input id="prodActivo" type="checkbox" checked class="w-4 h-4 accent-amber-500" />
-        <label for="prodActivo" class="text-slate-300 font-semibold">Producto Activo en catálogo</label>
+        <label for="prodActivo" class="text-slate-300 font-semibold">Producto Activo en el catálogo</label>
       </div>
       <button onclick="guardarProductoCompleto()" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold py-3 rounded-xl mt-2">
         Guardar Producto
@@ -324,11 +462,13 @@
     </div>
   </div>
 
-  <!-- MODAL 4: CREAR / EDITAR CONOCIMIENTO IA -->
+  <!-- ========================================== -->
+  <!-- MODAL 4: CREAR / EDITAR CONOCIMIENTO IA    -->
+  <!-- ========================================== -->
   <div id="modalIA" class="fixed inset-0 bg-black/80 z-50 hidden flex items-center justify-center p-4">
     <div class="bg-slate-800 border border-slate-700 w-full max-w-md rounded-2xl p-5 space-y-3 text-xs">
       <div class="flex justify-between items-center border-b border-slate-700 pb-2">
-        <h3 class="font-bold text-sm text-amber-400" id="tituloModalIA">Regla IA</h3>
+        <h3 class="font-bold text-sm text-amber-400" id="tituloModalIA">Regla de Conocimiento IA</h3>
         <button onclick="cerrarModal('modalIA')" class="text-slate-400 text-xl">&times;</button>
       </div>
       <input type="hidden" id="iaId" />
@@ -342,8 +482,8 @@
         </select>
       </div>
       <div>
-        <label class="text-slate-400 font-semibold">Instrucción *</label>
-        <textarea id="iaInstruccion" rows="4" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 mt-1"></textarea>
+        <label class="text-slate-400 font-semibold">Instrucción para el Asistente Virtual *</label>
+        <textarea id="iaInstruccion" rows="4" placeholder="Escribí la regla o promoción..." class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 mt-1"></textarea>
       </div>
       <div class="flex items-center gap-2 pt-1">
         <input id="iaActivo" type="checkbox" checked class="w-4 h-4 accent-amber-500" />
@@ -357,8 +497,8 @@
 
   <script>
     // PEGÁ ACÁ TU URL DE APPS SCRIPT TERMINADA EN /exec
-    const API_URL = "https://script.google.com/macros/s/AKfycbwepR3bAMD5wY3gtACBX7wBi8hVpnH3Ez_0ZlEpu1skXHCON12DaU5965NI1f0B7kVT/exec";
-    const URL_APP_CLIENTE = "https://appblanca.emilionicolascervera.workers.dev/";
+    const API_URL = "URL_DE_TU_APPS_SCRIPT";
+    const URL_APP_CLIENTE = "https://tu-sitio.com/index.html";
 
     const PINES = { Secretario: "1234", Gerente: "9999" };
     let rolActual = "Secretario";
@@ -371,6 +511,14 @@
 
     let filtroEstadoPed = "Todos";
     let filtroRubroProd = "Todos";
+    let mapasAdmin = {};
+
+    // Estado de Difusión Masiva
+    let flyerBase64 = "";
+    let flyerMime = "";
+    let flyerNombre = "";
+    let urlImagenPromoSubida = "";
+    let clientesEnviadosSet = new Set();
 
     window.addEventListener("DOMContentLoaded", () => {
       const rolGuardado = sessionStorage.getItem("admin_rol");
@@ -390,7 +538,9 @@
       return await res.json();
     }
 
-    // ROLES
+    // ==========================================
+    // 1. GESTIÓN DE ROLES Y NAVEGACIÓN
+    // ==========================================
     function seleccionarRolLogin(rol) {
       rolSeleccionadoLogin = rol;
       const esSec = rol === "Secretario";
@@ -440,7 +590,7 @@
         return;
       }
 
-      ["pedidos", "clientes", "productos", "ia"].forEach(t => {
+      ["pedidos", "difusion", "clientes", "productos", "ia"].forEach(t => {
         document.getElementById(`vista-${t}`).classList.toggle("hidden", t !== tab);
         const btn = document.getElementById(`tabBtn-${t}`);
         btn.className = (t === tab)
@@ -453,7 +603,9 @@
       document.getElementById(id).classList.add("hidden");
     }
 
-    // FUNCIÓN GENERAL DE BAJA (ELIMINAR REGISTRO EN CUALQUIER TABLA)
+    // ==========================================
+    // 2. ELIMINAR REGISTRO (BAJA EN LAS 4 TABLAS)
+    // ==========================================
     async function eliminarRegistro(tabla, id, etiqueta) {
       if (!confirm(`⚠️ ¿Seguro que querés ELIMINAR definitivamente "${etiqueta}" (${id}) de la tabla ${tabla}?`)) return;
 
@@ -472,7 +624,9 @@
       cargarDatosAdmin();
     }
 
-    // CARGAR DATOS
+    // ==========================================
+    // 3. SINCRONIZACIÓN DE DATOS
+    // ==========================================
     async function cargarDatosAdmin() {
       const icono = document.getElementById("iconoSync");
       icono.classList.add("fa-spin");
@@ -480,18 +634,19 @@
       if (API_URL === "URL_DE_TU_APPS_SCRIPT") {
         if (!productos.length) {
           productos = [
-            { ID_Producto: "P01", Rubro: "Pollería", Categoria: "Cajones de Pollo", Nombre: "Cajón de Pollo 20kg", Calibre_Variante: "Calibre 8 (Rotisería / Spiedo)", Precio: 48000, Stock_Disponible: 25, Activo: true },
-            { ID_Producto: "P02", Rubro: "Pollería", Categoria: "Cajones de Pollo", Nombre: "Cajón de Pollo 20kg", Calibre_Variante: "Calibre 7 (Grande / Trozar)", Precio: 49500, Stock_Disponible: 18, Activo: true }
+            { ID_Producto: "P01", Rubro: "Pollería", Categoria: "Cajones de Pollo", Nombre: "Cajón de Pollo Óptimo 20kg", Calibre_Variante: "Calibre N7 (Grande / Trozar)", Precio: 56000, Stock_Disponible: 25, Activo: true },
+            { ID_Producto: "P02", Rubro: "Pollería", Categoria: "Cajones de Pollo", Nombre: "Cajón de Pollo 20kg", Calibre_Variante: "Calibre N8 (Rotisería / Spiedo)", Precio: 54000, Stock_Disponible: 18, Activo: true },
+            { ID_Producto: "C01", Rubro: "Carnicería", Categoria: "Vacuno", Nombre: "Carne Molida Vacuna Especial", Calibre_Variante: "Precio por Kg", Precio: 10900, Stock_Disponible: 30, Activo: true }
           ];
           pedidos = [
-            { ID_Pedido: "PED-1042", Fecha_Hora: "05/11/2026 09:15", Telefono_Cliente: "5493875112233", Nombre_Cliente: "Rotisería El Pollo Loco", Direccion_Entrega: "Av. Belgrano 450", Detalle_Legible: "3x Cajón de Pollo 20kg [Calibre 8]", Total: 144000, Estado: "Pendiente", Repartidor: "Repartidor 1", Fecha_Entrega: "Hoy", Estado_Pago: "Pendiente de Cobro", Metodo_Pago: "Sin especificar" },
-            { ID_Pedido: "PED-1041", Fecha_Hora: "05/11/2026 08:30", Telefono_Cliente: "5493875445566", Nombre_Cliente: "Carnicería Don Tito", Direccion_Entrega: "San Martín 120", Detalle_Legible: "2x Cajón de Pollo 20kg [Calibre 7]", Total: 99000, Estado: "Enviado", Repartidor: "Repartidor 1", Fecha_Entrega: "Hoy", Estado_Pago: "Pendiente de Cobro", Metodo_Pago: "Sin especificar" }
+            { ID_Pedido: "PED-1042", Fecha_Hora: "05/11/2026 10:15", Telefono_Cliente: "5493875112233", Nombre_Cliente: "Federico Godoy", Localidad: "General Güemes", Barrio: "Barrio Docente", Calle_Numero: "Manzana 17B Casa 11", Zona: "Sur", Referencia: "Portón reja negra", Latitud: "-24.6644", Longitud: "-65.0475", Direccion_Entrega: "Barrio Docente, Manzana 17B Casa 11 (General Güemes)", Detalle_Legible: "1x Cajón de Pollo Óptimo 20kg [Calibre N7]", Total: 56000, Estado: "Pendiente", Repartidor: "Repartidor 1", Fecha_Entrega: "Hoy", Estado_Pago: "Pendiente de Cobro", Metodo_Pago: "Sin especificar" }
           ];
           clientes = [
-            { ID_Cliente: "C01", Nombre_Comercio: "Rotisería El Pollo Loco", Nombre_Contacto: "Juan Pérez", Telefono_WhatsApp: "5493875112233", Pedido_Habitual: "3 cajones Calibre 8", Dias_Visita: "Lunes, Jueves" }
+            { ID_Cliente: "C01", Nombre_Comercio: "Rotisería El Pollo Loco", Nombre_Contacto: "Juan Pérez", Telefono_WhatsApp: "5493875112233", Pedido_Habitual: "3 cajones Calibre 8", Dias_Visita: "Lunes, Jueves" },
+            { ID_Cliente: "C02", Nombre_Comercio: "Carnicería Don Tito", Nombre_Contacto: "Roberto Gómez", Telefono_WhatsApp: "5493875445566", Pedido_Habitual: "2 cajones Calibre 7", Dias_Visita: "Martes, Viernes" }
           ];
           conocimiento = [
-            { ID_Regla: "R-01", Topico: "Promociones", Instruccion: "Llevando 5 o más cajones de pollo hay bonificación en el envío.", Activo: true }
+            { ID_Regla: "R-01", Topico: "Promociones", Instruccion: "Carne molida vacuna a $10.900 el kg y Matambre a $11.500 el kg.", Activo: true }
           ];
         }
         icono.classList.remove("fa-spin");
@@ -518,19 +673,21 @@
 
     function renderTodo() {
       renderPedidos();
+      renderDifusionMasiva();
       renderClientes();
       renderProductosAdmin();
       renderConocimientoIA();
     }
 
-    // PEDIDOS + ASIGNACIÓN A REPARTIDOR
+    // ==========================================
+    // 4. PESTAÑA PEDIDOS + MINI MAPA + COBROS
+    // ==========================================
     function filtrarEstadoPedido(estado) {
       filtroEstadoPed = estado;
       renderPedidos();
     }
 
     function renderPedidos() {
-      // Estadísticas rápidas
       const pend = pedidos.filter(p => p.Estado === "Pendiente" || p.Estado === "En Preparación").length;
       const enRep = pedidos.filter(p => p.Estado === "Enviado").length;
       const porCobrar = pedidos.filter(p => p.Estado !== "Cancelado" && p.Estado_Pago !== "Pagado").reduce((a, b) => a + (Number(b.Total) || 0), 0);
@@ -552,6 +709,10 @@
       cont.innerHTML = lista.map(p => {
         const bloqueado = (p.Estado === "Enviado" || p.Estado === "Entregado");
         const pagado = p.Estado_Pago === "Pagado";
+        const tieneGPS = p.Latitud && p.Longitud;
+        const linkMaps = tieneGPS
+          ? `https://www.google.com/maps?q=${p.Latitud},${p.Longitud}`
+          : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.Direccion_Entrega || '')}`;
         const jsonSeguro = JSON.stringify(p).replace(/'/g, "&apos;");
 
         return `
@@ -576,13 +737,37 @@
               </div>
             </div>
 
-            <p class="text-sm font-bold text-amber-400">${p.Nombre_Cliente} <span class="text-xs text-slate-400 font-normal">(${p.Telefono_Cliente})</span></p>
-            <p class="text-slate-300"><i class="fa-solid fa-location-dot text-slate-400 mr-1"></i> ${p.Direccion_Entrega}</p>
-            <div class="bg-slate-900 p-2.5 rounded-xl border border-slate-700 text-slate-200">
-              ${p.Detalle_Legible}
+            <p class="text-sm font-bold text-amber-400">👤 ${p.Nombre_Cliente} <span class="text-xs text-slate-400 font-normal">(${p.Telefono_Cliente})</span></p>
+
+            <!-- Dirección Desglosada -->
+            <div class="bg-slate-900/90 p-2.5 rounded-xl border border-slate-700 space-y-1 text-slate-200">
+              <p>📍 <b>Localidad:</b> ${p.Localidad || '-'} • <b>Zona:</b> <span class="text-amber-300">${p.Zona || 'Centro'}</span></p>
+              <p>🏘️ <b>Barrio:</b> ${p.Barrio || '-'} • <b>Calle/N°:</b> ${p.Calle_Numero || p.Direccion_Entrega}</p>
+              ${p.Referencia ? `<p class="text-sky-300">📝 <b>Referencia:</b> ${p.Referencia}</p>` : ''}
             </div>
 
-            <!-- ASIGNACIÓN DE REPARTIDOR Y ESTADO DE PAGO -->
+            <!-- Botones de Mini Mapa Exacto y Google Maps -->
+            <div class="flex gap-2">
+              ${tieneGPS ? `
+                <button onclick="toggleMiniMapaAdmin('${p.ID_Pedido}', ${p.Latitud}, ${p.Longitud})" class="flex-1 bg-blue-600/30 border border-blue-500/50 hover:bg-blue-600/40 text-blue-200 font-bold py-1.5 rounded-xl flex justify-center items-center gap-1">
+                  <i class="fa-solid fa-map"></i> Ver Mini Mapa Exacto
+                </button>
+              ` : ''}
+              <a href="${linkMaps}" target="_blank" class="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-bold py-1.5 rounded-xl flex justify-center items-center gap-1">
+                <i class="fa-solid fa-location-arrow text-emerald-400"></i> Abrir Google Maps
+              </a>
+            </div>
+
+            <!-- Contenedor del Mini Mapa Incrustado -->
+            <div id="wrapMapaAdmin-${p.ID_Pedido}" class="hidden pt-1">
+              <div id="mapaAdmin-${p.ID_Pedido}" class="w-full h-40 rounded-xl border border-slate-600 z-10"></div>
+            </div>
+
+            <div class="bg-slate-900 p-2.5 rounded-xl border border-slate-700 text-slate-200">
+              <b>🛒 Detalle:</b> ${p.Detalle_Legible}
+            </div>
+
+            <!-- Repartidor Asignado y Estado de Pago -->
             <div class="grid grid-cols-2 gap-2 pt-1">
               <div class="bg-slate-900/80 p-2 rounded-xl border border-slate-700">
                 <label class="text-[10px] text-slate-400 block">🚚 Repartidor asignado:</label>
@@ -610,7 +795,7 @@
                   ? `<button onclick='abrirModalPedido(${jsonSeguro})' class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-xl font-bold flex items-center gap-1">
                       <i class="fa-solid fa-pen"></i> Editar
                      </button>
-                     <button onclick="actualizarLogisticaPedido('${p.ID_Pedido}', 'Enviado', null)" class="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded-xl font-bold flex items-center gap-1" title="Mandar a la pantalla del Repartidor">
+                     <button onclick="actualizarLogisticaPedido('${p.ID_Pedido}', 'Enviado', null)" class="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded-xl font-bold flex items-center gap-1">
                       <i class="fa-solid fa-truck"></i> Mandar a Reparto
                      </button>`
                   : `<span class="text-[11px] text-indigo-300 font-semibold px-2 py-1 bg-indigo-950/60 rounded-lg border border-indigo-800/50">🔒 En Reparto / Entregado</span>`
@@ -619,6 +804,23 @@
           </div>
         </div>`;
       }).join("");
+    }
+
+    function toggleMiniMapaAdmin(idPedido, lat, lng) {
+      const wrap = document.getElementById(`wrapMapaAdmin-${idPedido}`);
+      wrap.classList.toggle("hidden");
+      if (!wrap.classList.contains("hidden")) {
+        setTimeout(() => {
+          if (!mapasAdmin[idPedido]) {
+            const m = L.map(`mapaAdmin-${idPedido}`).setView([lat, lng], 16);
+            L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(m);
+            L.marker([lat, lng]).addTo(m);
+            mapasAdmin[idPedido] = m;
+          } else {
+            mapasAdmin[idPedido].invalidateSize();
+          }
+        }, 120);
+      }
     }
 
     async function actualizarLogisticaPedido(idPedido, nuevoEstado, nuevoRepartidor) {
@@ -650,45 +852,190 @@
       }
       document.getElementById("tituloModalPedido").innerText = p ? `Editar Pedido ${p.ID_Pedido}` : "Nuevo Pedido Manual";
       document.getElementById("pedId").value = p ? p.ID_Pedido : "";
-      document.getElementById("pedNombre").value = p ? p.Nombre_Cliente : "";
-      document.getElementById("pedTelefono").value = p ? p.Telefono_Cliente : "";
-      document.getElementById("pedDireccion").value = p ? p.Direccion_Entrega : "";
-      document.getElementById("pedDetalle").value = p ? p.Detalle_Legible : "";
-      document.getElementById("pedTotal").value = p ? p.Total : "";
-      document.getElementById("pedRepartidor").value = (p && p.Repartidor) ? p.Repartidor : "Repartidor 1";
-      document.getElementById("pedFechaEntrega").value = (p && p.Fecha_Entrega) ? p.Fecha_Entrega : "Hoy";
+      document.getElementById("pedNombre").value = p ? (p.Nombre_Cliente || "") : "";
+      document.getElementById("pedTelefono").value = p ? (p.Telefono_Cliente || "") : "";
+      document.getElementById("pedLocalidad").value = p ? (p.Localidad || "") : "";
+      document.getElementById("pedBarrio").value = p ? (p.Barrio || "") : "";
+      document.getElementById("pedCalleNumero").value = p ? (p.Calle_Numero || p.Direccion_Entrega || "") : "";
+      document.getElementById("pedZona").value = p && p.Zona ? p.Zona : "Centro";
+      document.getElementById("pedReferencia").value = p ? (p.Referencia || "") : "";
+      document.getElementById("pedLat").value = p ? (p.Latitud || "") : "";
+      document.getElementById("pedLng").value = p ? (p.Longitud || "") : "";
+      document.getElementById("pedDetalle").value = p ? (p.Detalle_Legible || "") : "";
+      document.getElementById("pedTotal").value = p ? (p.Total || "") : "";
+      document.getElementById("pedRepartidor").value = p && p.Repartidor ? p.Repartidor : "Repartidor 1";
+      document.getElementById("pedFechaEntrega").value = p && p.Fecha_Entrega ? p.Fecha_Entrega : "Hoy";
       document.getElementById("modalPedido").classList.remove("hidden");
     }
 
     async function guardarPedidoAdmin() {
       const idPedido = document.getElementById("pedId").value.trim();
+      const nombre = document.getElementById("pedNombre").value.trim();
+      const telefono = document.getElementById("pedTelefono").value.trim();
+      const localidad = document.getElementById("pedLocalidad").value.trim();
+      const barrio = document.getElementById("pedBarrio").value.trim();
+      const calleNumero = document.getElementById("pedCalleNumero").value.trim();
+      const zona = document.getElementById("pedZona").value;
+      const referencia = document.getElementById("pedReferencia").value.trim();
+      const latitud = document.getElementById("pedLat").value.trim();
+      const longitud = document.getElementById("pedLng").value.trim();
+      const detalleLegible = document.getElementById("pedDetalle").value.trim();
+      const total = Number(document.getElementById("pedTotal").value) || 0;
+      const repartidor = document.getElementById("pedRepartidor").value;
+      const fechaEntrega = document.getElementById("pedFechaEntrega").value.trim() || "Hoy";
+
+      if (!nombre || !localidad || !barrio || !calleNumero || !detalleLegible) {
+        alert("Completá Cliente, Localidad, Barrio, Calle/N° y el Detalle del pedido.");
+        return;
+      }
+
+      const direccion = `Barrio ${barrio}, ${calleNumero} (${localidad})${referencia ? ' - Ref: ' + referencia : ''}`;
+
       const payload = {
         action: idPedido ? "modificar_pedido" : "crear_pedido",
         idPedido,
         autor: rolActual,
-        nombre: document.getElementById("pedNombre").value.trim(),
-        telefono: document.getElementById("pedTelefono").value.trim(),
-        direccion: document.getElementById("pedDireccion").value.trim(),
-        detalleLegible: document.getElementById("pedDetalle").value.trim(),
-        total: Number(document.getElementById("pedTotal").value) || 0,
-        repartidor: document.getElementById("pedRepartidor").value,
-        fechaEntrega: document.getElementById("pedFechaEntrega").value.trim() || "Hoy"
+        nombre,
+        telefono,
+        direccion,
+        localidad,
+        barrio,
+        calleNumero,
+        referencia,
+        zona,
+        latitud,
+        longitud,
+        detalleLegible,
+        total,
+        repartidor,
+        fechaEntrega
       };
-
-      if (!payload.nombre || !payload.direccion || !payload.detalleLegible) {
-        alert("Completá cliente, dirección y detalle.");
-        return;
-      }
 
       if (API_URL !== "URL_DE_TU_APPS_SCRIPT") {
         const data = await postAPI(payload);
-        if (data.status === "error") { alert(data.message); return; }
+        if (data.status === "error") {
+          alert(data.message);
+          return;
+        }
+      } else {
+        if (idPedido) {
+          const idx = pedidos.findIndex(x => x.ID_Pedido === idPedido);
+          if (idx > -1) pedidos[idx] = { ...pedidos[idx], Nombre_Cliente: nombre, Telefono_Cliente: telefono, Direccion_Entrega: direccion, Localidad: localidad, Barrio: barrio, Calle_Numero: calleNumero, Referencia: referencia, Zona: zona, Latitud: latitud, Longitud: longitud, Detalle_Legible: detalleLegible, Total: total, Repartidor: repartidor, Fecha_Entrega: fechaEntrega };
+        } else {
+          pedidos.unshift({ ID_Pedido: "PED-" + Math.floor(1000 + Math.random() * 9000), Fecha_Hora: "Recién", Nombre_Cliente: nombre, Telefono_Cliente: telefono, Direccion_Entrega: direccion, Localidad: localidad, Barrio: barrio, Calle_Numero: calleNumero, Referencia: referencia, Zona: zona, Latitud: latitud, Longitud: longitud, Detalle_Legible: detalleLegible, Total: total, Estado: "Pendiente", Repartidor: repartidor, Fecha_Entrega: fechaEntrega, Estado_Pago: "Pendiente de Cobro" });
+        }
       }
+
       cerrarModal("modalPedido");
       cargarDatosAdmin();
     }
 
-    // CLIENTES (ALTA, BAJA, MODIFICACIÓN)
+    // ==========================================
+    // 5. PESTAÑA DIFUSIÓN MASIVA Y PROMOCIONES
+    // ==========================================
+    function previsualizarFlyer(input) {
+      const file = input.files[0];
+      if (!file) return;
+      flyerMime = file.type;
+      flyerNombre = file.name;
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        const dataUrl = e.target.result;
+        flyerBase64 = dataUrl.split(",")[1];
+        const img = document.getElementById("previewFlyer");
+        img.src = dataUrl;
+        img.classList.remove("hidden");
+      };
+      reader.readAsDataURL(file);
+    }
+
+    async function publicarYGuardarPromo() {
+      const btn = document.getElementById("btnGuardarPromo");
+      btn.disabled = true;
+      btn.innerText = "Subiendo flyer...";
+
+      const payload = {
+        action: "guardar_promocion",
+        Titulo: document.getElementById("promoTitulo").value.trim(),
+        Detalle: document.getElementById("promoDetalle").value.trim(),
+        Precio_Promo: Number(document.getElementById("promoPrecio").value) || 0,
+        imagenBase64: flyerBase64,
+        imagenMime: flyerMime,
+        imagenNombre: flyerNombre
+      };
+
+      if (API_URL !== "URL_DE_TU_APPS_SCRIPT") {
+        const res = await postAPI(payload);
+        if (res.urlImagen) urlImagenPromoSubida = res.urlImagen;
+        alert("✅ Promoción publicada en el catálogo de los clientes y lista para difundir por WhatsApp.");
+      } else {
+        alert("✅ Promoción cargada (Modo Demo).");
+      }
+
+      btn.disabled = false;
+      btn.innerHTML = `<i class="fa-solid fa-cloud-arrow-up"></i> Publicar Promo en App`;
+      renderDifusionMasiva();
+    }
+
+    function armarTextoPromoWA(nombreCliente) {
+      const tit = document.getElementById("promoTitulo").value.trim();
+      const det = document.getElementById("promoDetalle").value.trim();
+      const pre = document.getElementById("promoPrecio").value.trim();
+
+      return `¡Hola ${nombreCliente}! 👋 Mirá las ofertas que tenemos esta semana para completar tu pedido:\n\n` +
+        `*${tit}*\n\n${det}\n` +
+        (pre ? `\n💰 *Precio Promo:* $${Number(pre).toLocaleString('es-AR')}\n` : `\n`) +
+        (urlImagenPromoSubida ? `🖼️ *Ver Flyer:* ${urlImagenPromoSubida}\n` : ``) +
+        `\n📲 *Hacé tu pedido directo acá:* ${URL_APP_CLIENTE}`;
+    }
+
+    async function compartirFlyerNativo() {
+      const fileInput = document.getElementById("promoFile");
+      const texto = armarTextoPromoWA("clientes");
+
+      if (navigator.share && fileInput.files.length > 0) {
+        try {
+          await navigator.share({
+            title: document.getElementById("promoTitulo").value,
+            text: texto,
+            files: [fileInput.files[0]]
+          });
+          return;
+        } catch (err) {}
+      }
+      alert("Para enviar a cada cliente con su nombre personalizado, usá los botones verdes de la consola de la derecha.");
+    }
+
+    function renderDifusionMasiva() {
+      const cont = document.getElementById("listaDifusionClientes");
+      document.getElementById("contadorEnvios").innerText = `${clientesEnviadosSet.size} / ${clientes.length} enviados`;
+
+      cont.innerHTML = clientes.map(c => {
+        const yaEnviado = clientesEnviadosSet.has(c.ID_Cliente);
+        return `
+        <div class="bg-slate-900 border ${yaEnviado ? 'border-emerald-600/60' : 'border-slate-700'} p-3 rounded-xl flex justify-between items-center">
+          <div>
+            <p class="font-bold text-white">${c.Nombre_Comercio} <span class="text-slate-400 font-normal">(${c.Nombre_Contacto})</span></p>
+            <p class="text-[11px] text-slate-400">${c.Telefono_WhatsApp} • ${c.Dias_Visita}</p>
+          </div>
+          <button onclick="dispararPromoCliente('${c.ID_Cliente}', '${c.Telefono_WhatsApp}', '${c.Nombre_Contacto}')" class="${yaEnviado ? 'bg-slate-700 text-emerald-400' : 'bg-emerald-600 hover:bg-emerald-500 text-white'} font-bold px-3 py-2 rounded-xl flex items-center gap-1.5">
+            <i class="fa-brands fa-whatsapp"></i> ${yaEnviado ? '✅ Reenviar' : 'Enviar Promo'}
+          </button>
+        </div>`;
+      }).join("");
+    }
+
+    function dispararPromoCliente(idCli, tel, nombre) {
+      clientesEnviadosSet.add(idCli);
+      const texto = armarTextoPromoWA(nombre);
+      const url = `https://wa.me/${String(tel).replace(/\D/g, '')}?text=${encodeURIComponent(texto)}`;
+      window.open(url, "_blank");
+      renderDifusionMasiva();
+    }
+
+    // ==========================================
+    // 6. PESTAÑA CLIENTES (ABM + RECORDATORIO HABITUAL)
+    // ==========================================
     function renderClientes() {
       const cont = document.getElementById("contenedorClientes");
       if (!clientes.length) {
@@ -722,7 +1069,7 @@
             </p>
           </div>
           <a href="${urlWA}" target="_blank" class="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-2.5 rounded-xl flex justify-center items-center gap-2 shadow">
-            <i class="fa-brands fa-whatsapp text-base"></i> Recordar por WhatsApp
+            <i class="fa-brands fa-whatsapp text-base"></i> Recordar Pedido Habitual por WhatsApp
           </a>
         </div>`;
       }).join("");
@@ -758,7 +1105,9 @@
       cargarDatosAdmin();
     }
 
-    // PRODUCTOS (ALTA, BAJA, MODIFICACIÓN + PRECIO RÁPIDO)
+    // ==========================================
+    // 7. PESTAÑA PRODUCTOS Y PRECIOS (ABM)
+    // ==========================================
     function filtrarRubroAdmin(rubro) {
       filtroRubroProd = rubro;
       renderProductosAdmin();
@@ -870,7 +1219,9 @@
       cargarDatosAdmin();
     }
 
-    // CONOCIMIENTO IA (ALTA, BAJA, MODIFICACIÓN)
+    // ==========================================
+    // 8. PESTAÑA CONOCIMIENTO IA (ABM)
+    // ==========================================
     function renderConocimientoIA() {
       const cont = document.getElementById("contenedorConocimientoIA");
       if (!conocimiento.length) {
@@ -887,6 +1238,7 @@
             <div class="flex items-center gap-2">
               <span class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-500/20 text-amber-300">${r.Topico}</span>
               <span class="text-slate-400 font-mono">${r.ID_Regla}</span>
+              <span class="text-[10px] font-bold ${activo ? 'text-emerald-400' : 'text-red-400'}">${activo ? '● Activa' : '○ Inactiva'}</span>
             </div>
             <p class="text-slate-200 leading-relaxed pt-1">${r.Instruccion}</p>
           </div>
@@ -919,7 +1271,10 @@
         Instruccion: document.getElementById("iaInstruccion").value.trim(),
         Activo: document.getElementById("iaActivo").checked
       };
-      if (!payload.Instruccion) { alert("Escribí la instrucción."); return; }
+      if (!payload.Instruccion) {
+        alert("Escribí la instrucción.");
+        return;
+      }
       if (API_URL !== "URL_DE_TU_APPS_SCRIPT") await postAPI(payload);
       cerrarModal("modalIA");
       cargarDatosAdmin();

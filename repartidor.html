@@ -3,9 +3,33 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Hoja de Ruta - Repartidor & Cobranzas</title>
+  <title>Hoja de Ruta - Mapa General & Cobranzas</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    .pin-reparto {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 9999px;
+      font-weight: 800;
+      font-size: 11px;
+      color: white;
+      box-shadow: 0 3px 8px rgba(0,0,0,0.45);
+      border: 2px solid white;
+    }
+    .leaflet-popup-content-wrapper {
+      background: #0f172a;
+      color: #f8fafc;
+      border-radius: 14px;
+      border: 1px solid #334155;
+    }
+    .leaflet-popup-tip {
+      background: #0f172a;
+    }
+  </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen font-sans pb-20">
 
@@ -13,16 +37,17 @@
   <header class="bg-indigo-900 border-b border-indigo-700 p-4 sticky top-0 z-30 shadow-lg">
     <div class="max-w-md mx-auto flex justify-between items-center">
       <div>
-        <h1 class="text-base font-extrabold text-white"><i class="fa-solid fa-truck-fast text-amber-400 mr-1.5"></i> Hoja de Ruta y Cobros</h1>
-        <p class="text-xs text-indigo-200">Entregas del día y rendición de caja</p>
+        <h1 class="text-base font-extrabold text-white">
+          <i class="fa-solid fa-truck-fast text-amber-400 mr-1.5"></i> Hoja de Ruta GPS y Cobros
+        </h1>
+        <p class="text-xs text-indigo-200">Mapa general de entregas, cercanía y caja</p>
       </div>
       <button onclick="cargarRuta()" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1 shadow">
         <i id="icoSyncRep" class="fa-solid fa-rotate"></i> Actualizar
       </button>
     </div>
 
-    <!-- Selector de Repartidor -->
-    <div class="max-w-md mx-auto mt-3 flex gap-2 items-center">
+    <div class="max-w-md mx-auto mt-3 flex gap-2">
       <select id="selChofer" onchange="cargarRuta()" class="flex-1 bg-indigo-950 border border-indigo-700 rounded-xl px-3 py-2 text-xs font-bold text-white">
         <option value="Todos">🚚 Todos los Repartidores</option>
         <option value="Repartidor 1">👤 Repartidor 1</option>
@@ -38,14 +63,14 @@
 
   <main class="max-w-md mx-auto p-3 space-y-3">
 
-    <!-- TARJETA DE RENDICIÓN DE CAJA DEL REPARTIDOR -->
+    <!-- TARJETA DE RENDICIÓN DE CAJA -->
     <div class="grid grid-cols-3 gap-2 text-center text-xs">
       <div class="bg-slate-900 border border-slate-800 p-2.5 rounded-2xl">
         <p class="text-[10px] text-slate-400">Por Cobrar</p>
         <p id="cajaPendiente" class="font-extrabold text-sm text-rose-400">$0</p>
       </div>
       <div class="bg-slate-900 border border-slate-800 p-2.5 rounded-2xl">
-        <p class="text-[10px] text-slate-400">Efectivo Cobrado</p>
+        <p class="text-[10px] text-slate-400">Efectivo</p>
         <p id="cajaEfectivo" class="font-extrabold text-sm text-emerald-400">$0</p>
       </div>
       <div class="bg-slate-900 border border-slate-800 p-2.5 rounded-2xl">
@@ -54,18 +79,44 @@
       </div>
     </div>
 
+    <!-- MAPA GENERAL DE TODA LA HOJA DE RUTA -->
+    <section class="bg-slate-900 border border-indigo-800/80 rounded-2xl p-3 space-y-2.5 shadow-lg">
+      <div class="flex justify-between items-center">
+        <div>
+          <h2 class="text-xs font-extrabold text-amber-400 flex items-center gap-1.5">
+            <i class="fa-solid fa-map-location-dot"></i> Mapa General del Reparto (<span id="lblCantPines">0</span> paradas)
+          </h2>
+          <p class="text-[10px] text-slate-400">🔴 Pendiente • 🟢 Entregado • 🔵 Tu Camión</p>
+        </div>
+        <button onclick="toggleSeccionMapaGeneral()" id="btnToggleMapaGral" class="bg-slate-800 border border-slate-700 text-slate-300 px-2.5 py-1 rounded-lg text-[11px] font-bold">
+          Ocultar
+        </button>
+      </div>
+
+      <div id="contenedorMapaGeneral" class="space-y-2">
+        <div id="mapaGeneralRuta" class="w-full h-64 rounded-xl border border-slate-700 z-10"></div>
+
+        <div class="flex gap-2">
+          <button onclick="ubicarCamionYOrdenar()" id="btnMiUbicacion" class="flex-1 bg-sky-600 hover:bg-sky-500 text-white font-bold py-2 px-3 rounded-xl text-xs shadow flex justify-center items-center gap-1.5">
+            <i class="fa-solid fa-location-crosshairs"></i> Mi Ubicación y Ordenar por Cercanía
+          </button>
+          <button onclick="encuadrarTodosLosPines()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold py-2 px-3 rounded-xl text-xs" title="Ver todos los pines">
+            <i class="fa-solid fa-expand"></i>
+          </button>
+        </div>
+      </div>
+    </section>
+
     <!-- LISTA DE PARADAS / ENTREGAS -->
-    <div id="listaEntregas" class="space-y-3">
-      <p class="text-center text-xs text-slate-500 py-10">Cargando hoja de ruta...</p>
-    </div>
+    <div id="listaEntregas" class="space-y-3"></div>
 
   </main>
 
-  <!-- MODAL PARA CONFIRMAR ENTREGA Y COBRO -->
+  <!-- MODAL DE COBRO Y COMPROBANTE WHATSAPP -->
   <div id="modalCobro" class="fixed inset-0 bg-black/80 z-50 hidden flex items-end sm:items-center justify-center p-0 sm:p-4">
-    <div class="bg-slate-900 border border-slate-700 w-full max-w-md rounded-t-3xl sm:rounded-2xl p-5 space-y-3.5 text-xs">
+    <div class="bg-slate-900 border border-slate-700 w-full max-w-md rounded-t-3xl sm:rounded-2xl p-5 space-y-3 text-xs">
       <div class="flex justify-between items-center border-b border-slate-800 pb-2">
-        <h3 class="font-extrabold text-sm text-amber-400" id="tituloModalCobro">Confirmar Entrega y Pago</h3>
+        <h3 class="font-extrabold text-sm text-amber-400" id="tituloModalCobro">Registrar Entrega y Cobro</h3>
         <button onclick="cerrarModalCobro()" class="text-slate-400 text-2xl">&times;</button>
       </div>
 
@@ -74,8 +125,8 @@
       <input type="hidden" id="cobroNombreCliente" />
       <input type="hidden" id="cobroDetallePedido" />
 
-      <div class="bg-slate-800 p-3 rounded-xl border border-slate-700 flex justify-between items-center">
-        <span class="text-slate-300 font-semibold">Total a Cobrar al Cliente:</span>
+      <div class="bg-slate-800 p-3 rounded-xl flex justify-between items-center">
+        <span>Total a Cobrar:</span>
         <span id="cobroMonto" class="text-lg font-extrabold text-emerald-400">$0</span>
       </div>
 
@@ -83,7 +134,7 @@
         <label class="text-slate-400 font-semibold">Estado del Pago *</label>
         <select id="cobroEstadoPago" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 mt-1 font-bold text-white">
           <option value="Pagado">✅ Pagado en la entrega</option>
-          <option value="Pendiente de Cobro">⏳ Queda Pendiente (Cuenta Corriente / Fiado)</option>
+          <option value="Pendiente de Cobro">⏳ Queda en Cuenta Corriente / Fiado</option>
         </select>
       </div>
 
@@ -97,30 +148,60 @@
         </div>
       </div>
 
-      <div>
-        <label class="text-slate-400 font-semibold">Observaciones / N° de Comprobante (opcional)</label>
-        <input id="cobroNotas" type="text" placeholder="Ej: Recibió Juan / Comprobante transf #45892" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 mt-1 text-white" />
-      </div>
+      <input id="cobroNotas" type="text" placeholder="Observaciones / N° comprobante (opcional)" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white" />
 
-      <!-- CHECKBOX PARA ENVIAR COMPROBANTE AUTOMÁTICO POR WHATSAPP -->
-      <div class="flex items-center gap-2 bg-slate-800/80 p-2.5 rounded-xl border border-slate-700">
+      <label class="flex items-center gap-2 bg-slate-800 p-2.5 rounded-xl border border-slate-700">
         <input id="chkEnviarWap" type="checkbox" checked class="w-4 h-4 accent-emerald-500" />
-        <label for="chkEnviarWap" class="text-slate-200 font-semibold">Enviar comprobante por WhatsApp al cliente al guardar</label>
-      </div>
+        <span class="font-semibold text-slate-200">Enviar comprobante por WhatsApp al cliente al guardar</span>
+      </label>
 
       <button id="btnConfirmarCobro" onclick="guardarEntregaYCobro()" class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold py-3.5 rounded-xl text-sm shadow-lg">
-        ✅ Marcar Entregado y Guardar Cobro
+        ✅ Confirmar Entrega y Pago
       </button>
     </div>
   </div>
 
   <script>
     // PEGÁ ACÁ TU URL DE APPS SCRIPT TERMINADA EN /exec
-    const API_URL = "https://script.google.com/macros/s/AKfycbwepR3bAMD5wY3gtACBX7wBi8hVpnH3Ez_0ZlEpu1skXHCON12DaU5965NI1f0B7kVT/exec";
+    const API_URL = "URL_DE_TU_APPS_SCRIPT";
+
     let pedidosRuta = [];
     let metodoSeleccionado = "Efectivo";
+    let mapasIndividuales = {};
 
-    window.addEventListener("DOMContentLoaded", cargarRuta);
+    // Variables del Mapa General de Hoja de Ruta
+    let mapaGeneral = null;
+    let capaMarcadores = null;
+    let marcadorCamion = null;
+    let posicionCamion = null; // { lat, lng }
+
+    window.addEventListener("DOMContentLoaded", () => {
+      inicializarMapaGeneral();
+      cargarRuta();
+    });
+
+    function inicializarMapaGeneral() {
+      mapaGeneral = L.map("mapaGeneralRuta").setView([-24.6644, -65.0475], 14);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: "© OpenStreetMap"
+      }).addTo(mapaGeneral);
+      capaMarcadores = L.layerGroup().addTo(mapaGeneral);
+    }
+
+    function toggleSeccionMapaGeneral() {
+      const cont = document.getElementById("contenedorMapaGeneral");
+      const btn = document.getElementById("btnToggleMapaGral");
+      cont.classList.toggle("hidden");
+      if (cont.classList.contains("hidden")) {
+        btn.innerText = "Mostrar Mapa";
+      } else {
+        btn.innerText = "Ocultar";
+        setTimeout(() => {
+          mapaGeneral.invalidateSize();
+          encuadrarTodosLosPines();
+        }, 150);
+      }
+    }
 
     async function cargarRuta() {
       const ico = document.getElementById("icoSyncRep");
@@ -128,10 +209,68 @@
       const chofer = document.getElementById("selChofer").value;
 
       if (API_URL === "URL_DE_TU_APPS_SCRIPT") {
+        // 3 paradas de ejemplo con coordenadas reales en General Güemes para probar el Mapa General
         pedidosRuta = [
-          { ID_Pedido: "PED-1041", Nombre_Cliente: "Carnicería Don Tito", Telefono_Cliente: "5493875445566", Direccion_Entrega: "San Martín 120", Detalle_Legible: "2x Cajón de Pollo 20kg [Calibre 7]", Total: 126000, Estado: "Enviado", Repartidor: "Repartidor 1", Estado_Pago: "Pendiente de Cobro", Metodo_Pago: "Sin especificar" }
+          {
+            ID_Pedido: "PED-1042",
+            Nombre_Cliente: "Federico Godoy",
+            Telefono_Cliente: "5493875112233",
+            Localidad: "General Güemes",
+            Barrio: "Barrio Docente",
+            Calle_Numero: "Manzana 17B Casa 11",
+            Zona: "Sur",
+            Referencia: "Portón negro frente a plazoleta",
+            Latitud: "-24.6712",
+            Longitud: "-65.0498",
+            Direccion_Entrega: "Barrio Docente, Mza 17B Casa 11 (General Güemes)",
+            Detalle_Legible: "1x Cajón de Pollo 20kg Promo N7",
+            Total: 56000,
+            Estado: "Enviado",
+            Repartidor: "Repartidor 1",
+            Estado_Pago: "Pendiente de Cobro",
+            Metodo_Pago: "Sin especificar"
+          },
+          {
+            ID_Pedido: "PED-1043",
+            Nombre_Cliente: "Rotisería El Pollo Loco",
+            Telefono_Cliente: "5493875445566",
+            Localidad: "General Güemes",
+            Barrio: "Centro",
+            Calle_Numero: "Av. Belgrano 450",
+            Zona: "Centro",
+            Referencia: "Local esquina cartel amarillo",
+            Latitud: "-24.6635",
+            Longitud: "-65.0462",
+            Direccion_Entrega: "Av. Belgrano 450 (General Güemes)",
+            Detalle_Legible: "3x Cajón de Pollo 20kg [Calibre N8] | 2kg Carne Molida",
+            Total: 183800,
+            Estado: "Enviado",
+            Repartidor: "Repartidor 1",
+            Estado_Pago: "Pendiente de Cobro",
+            Metodo_Pago: "Sin especificar"
+          },
+          {
+            ID_Pedido: "PED-1040",
+            Nombre_Cliente: "Carnicería Don Tito",
+            Telefono_Cliente: "5493875998877",
+            Localidad: "General Güemes",
+            Barrio: "Barrio El Cruce",
+            Calle_Numero: "San Martín 120",
+            Zona: "Norte",
+            Referencia: "Puerta blanca",
+            Latitud: "-24.6589",
+            Longitud: "-65.0421",
+            Direccion_Entrega: "San Martín 120 (General Güemes)",
+            Detalle_Legible: "2x Cajón de Pollo Óptimo N7",
+            Total: 112000,
+            Estado: "Entregado",
+            Repartidor: "Repartidor 1",
+            Estado_Pago: "Pagado",
+            Metodo_Pago: "Efectivo"
+          }
         ];
         ico.classList.remove("fa-spin");
+        if (posicionCamion) calcularDistanciasAEntregas();
         renderHojaRuta();
         return;
       }
@@ -141,6 +280,7 @@
         const data = await res.json();
         if (data.status === "ok") {
           pedidosRuta = data.pedidos || [];
+          if (posicionCamion) calcularDistanciasAEntregas();
           renderHojaRuta();
         }
       } catch (e) {
@@ -150,10 +290,172 @@
       }
     }
 
+    // UBICAR EL CAMIÓN POR GPS Y ORDENAR LA RUTA POR CERCANÍA
+    function ubicarCamionYOrdenar() {
+      const btn = document.getElementById("btnMiUbicacion");
+      if (!navigator.geolocation) {
+        alert("Tu celular no tiene soporte de geolocalización activo.");
+        return;
+      }
+
+      btn.disabled = true;
+      btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Localizando camión...`;
+
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          posicionCamion = {
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude
+          };
+          calcularDistanciasAEntregas();
+          // Ordenamos primero por cercanía en km
+          pedidosRuta.sort((a, b) => (a.distanciaKm ?? 9999) - (b.distanciaKm ?? 9999));
+          btn.disabled = false;
+          btn.innerHTML = `<i class="fa-solid fa-check"></i> Ordenado del más cercano al más lejano`;
+          renderHojaRuta();
+        },
+        (err) => {
+          btn.disabled = false;
+          btn.innerHTML = `<i class="fa-solid fa-location-crosshairs"></i> Reintentar Mi Ubicación`;
+          alert("Activá la ubicación GPS del celular para ordenar las entregas por cercanía.");
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
+    }
+
+    function calcularDistanciasAEntregas() {
+      if (!posicionCamion) return;
+      pedidosRuta.forEach(p => {
+        if (p.Latitud && p.Longitud) {
+          p.distanciaKm = calcularHaversineKm(
+            posicionCamion.lat,
+            posicionCamion.lng,
+            parseFloat(p.Latitud),
+            parseFloat(p.Longitud)
+          );
+        } else {
+          p.distanciaKm = null;
+        }
+      });
+    }
+
+    function calcularHaversineKm(lat1, lon1, lat2, lon2) {
+      const R = 6371;
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLon = (lon2 - lon1) * Math.PI / 180;
+      const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+      return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+    }
+
+    function formatearDistancia(km) {
+      if (km === null || km === undefined || isNaN(km)) return "";
+      if (km < 1) return `${Math.round(km * 1000)} m`;
+      return `${km.toFixed(1)} km`;
+    }
+
+    // RENDERIZAR EL MAPA GENERAL CON TODOS LOS PINES NUMERADOS
+    function actualizarPinesMapaGeneral(listaVisible) {
+      if (!mapaGeneral || !capaMarcadores) return;
+      capaMarcadores.clearLayers();
+      const coordenadasParaZoom = [];
+
+      // Si tenemos la posición GPS del camión, la dibujamos con un ícono azul
+      if (posicionCamion) {
+        const iconoCamion = L.divIcon({
+          className: "",
+          html: `<div class="pin-reparto" style="width:32px;height:32px;background:#0284c7;font-size:14px;"><i class="fa-solid fa-truck"></i></div>`,
+          iconSize: [32, 32],
+          iconAnchor: [16, 16]
+        });
+        L.marker([posicionCamion.lat, posicionCamion.lng], { icon: iconoCamion })
+          .bindPopup(`<div class="text-xs font-bold text-sky-400">🚚 Tu ubicación actual</div>`)
+          .addTo(capaMarcadores);
+        coordenadasParaZoom.push([posicionCamion.lat, posicionCamion.lng]);
+      }
+
+      listaVisible.forEach((p, index) => {
+        const lat = parseFloat(p.Latitud);
+        const lng = parseFloat(p.Longitud);
+        if (isNaN(lat) || isNaN(lng)) return;
+
+        const entregado = p.Estado === "Entregado";
+        const colorPin = entregado ? "#10b981" : "#ea580c"; // Verde si ya entregó, Naranja/Rojo si está pendiente
+        const numeroParada = index + 1;
+
+        const iconoParada = L.divIcon({
+          className: "",
+          html: `<div class="pin-reparto" style="width:28px;height:28px;background:${colorPin};">${numeroParada}</div>`,
+          iconSize: [28, 28],
+          iconAnchor: [14, 14],
+          popupAnchor: [0, -14]
+        });
+
+        const urlMaps = `https://www.google.com/maps?q=${lat},${lng}`;
+        const distTexto = p.distanciaKm != null ? `<span class="text-sky-400 font-bold"> • A ${formatearDistancia(p.distanciaKm)}</span>` : "";
+
+        const htmlPopup = `
+          <div class="text-xs space-y-1.5 min-w-[190px]">
+            <div class="flex justify-between items-center border-b border-slate-700 pb-1">
+              <span class="font-extrabold text-amber-400">#${numeroParada} ${p.Nombre_Cliente}</span>
+            </div>
+            <p class="text-slate-300">📍 <b>${p.Barrio || ''}</b> - ${p.Calle_Numero || p.Direccion_Entrega}${distTexto}</p>
+            <p class="text-slate-400 text-[11px]">${p.Detalle_Legible}</p>
+            <p class="font-extrabold text-sm text-emerald-400">💵 $${Number(p.Total).toLocaleString('es-AR')}</p>
+            <div class="grid grid-cols-2 gap-1.5 pt-1">
+              <a href="${urlMaps}" target="_blank" class="bg-sky-600 text-white text-center font-bold py-1.5 rounded-lg no-underline" style="color:white;">
+                <i class="fa-solid fa-location-arrow"></i> Ir GPS
+              </a>
+              <button onclick="abrirModalCobroPorId('${p.ID_Pedido}')" class="bg-emerald-500 text-slate-950 font-extrabold py-1.5 rounded-lg">
+                Cobrar
+              </button>
+            </div>
+          </div>
+        `;
+
+        L.marker([lat, lng], { icon: iconoParada })
+          .bindPopup(htmlPopup)
+          .addTo(capaMarcadores);
+
+        coordenadasParaZoom.push([lat, lng]);
+      });
+
+      document.getElementById("lblCantPines").innerText = coordenadasParaZoom.length - (posicionCamion ? 1 : 0);
+
+      if (coordenadasParaZoom.length > 0) {
+        setTimeout(() => {
+          mapaGeneral.invalidateSize();
+          mapaGeneral.fitBounds(coordenadasParaZoom, { padding: [30, 30], maxZoom: 16 });
+        }, 120);
+      }
+    }
+
+    function encuadrarTodosLosPines() {
+      const filtroEst = document.getElementById("selVistaEstado").value;
+      const lista = filtroEst === "Todos" ? pedidosRuta : pedidosRuta.filter(p => p.Estado === filtroEst);
+      actualizarPinesMapaGeneral(lista);
+    }
+
+    function abrirModalCobroPorId(idPedido) {
+      const p = pedidosRuta.find(x => x.ID_Pedido === idPedido);
+      if (p) abrirModalCobro(p);
+    }
+
+    function enfocarPinEnMapaGeneral(lat, lng, idPedido) {
+      const cont = document.getElementById("contenedorMapaGeneral");
+      if (cont.classList.contains("hidden")) toggleSeccionMapaGeneral();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      setTimeout(() => {
+        mapaGeneral.setView([lat, lng], 17);
+      }, 200);
+    }
+
     function renderHojaRuta() {
       const porCobrar = pedidosRuta.filter(p => p.Estado_Pago !== "Pagado").reduce((a, b) => a + (Number(b.Total) || 0), 0);
       const efvo = pedidosRuta.filter(p => p.Estado_Pago === "Pagado" && p.Metodo_Pago === "Efectivo").reduce((a, b) => a + (Number(b.Total) || 0), 0);
-      const transf = pedidosRuta.filter(p => p.Estado_Pago === "Pagado" && (p.Metodo_Pago === "Transferencia" || p.Metodo_Pago === "Mixto")).reduce((a, b) => a + (Number(b.Total) || 0), 0);
+      const transf = pedidosRuta.filter(p => p.Estado_Pago === "Pagado" && p.Metodo_Pago !== "Efectivo").reduce((a, b) => a + (Number(b.Total) || 0), 0);
 
       document.getElementById("cajaPendiente").innerText = "$" + porCobrar.toLocaleString("es-AR");
       document.getElementById("cajaEfectivo").innerText = "$" + efvo.toLocaleString("es-AR");
@@ -163,50 +465,98 @@
       const lista = filtroEst === "Todos" ? pedidosRuta : pedidosRuta.filter(p => p.Estado === filtroEst);
       const cont = document.getElementById("listaEntregas");
 
+      // Actualizamos el Mapa General con los pedidos filtrados
+      actualizarPinesMapaGeneral(lista);
+
       if (!lista.length) {
-        cont.innerHTML = `<p class="text-center text-xs text-slate-500 py-10">No hay entregas en esta categoría.</p>`;
+        cont.innerHTML = `<p class="text-center text-xs text-slate-500 py-10">No hay entregas en esta vista.</p>`;
         return;
       }
 
-      cont.innerHTML = lista.map(p => {
+      cont.innerHTML = lista.map((p, idx) => {
         const entregado = p.Estado === "Entregado";
         const pagado = p.Estado_Pago === "Pagado";
-        const urlMaps = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.Direccion_Entrega)}`;
-        const urlWA = `https://wa.me/${String(p.Telefono_Cliente).replace(/\D/g, '')}?text=${encodeURIComponent("🚚 ¡Hola " + p.Nombre_Cliente + "! Estoy llegando con el camión para entregarte tu pedido " + p.ID_Pedido + ".")}`;
+        const tieneGPS = p.Latitud && p.Longitud;
+        const urlMaps = tieneGPS
+          ? `https://www.google.com/maps?q=${p.Latitud},${p.Longitud}`
+          : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.Direccion_Entrega || '')}`;
+        const urlWA = `https://wa.me/${String(p.Telefono_Cliente).replace(/\D/g, '')}?text=${encodeURIComponent("🚚 ¡Hola " + p.Nombre_Cliente + "! Estoy en camino con tu pedido " + p.ID_Pedido + ".")}`;
         const jsonSeguro = JSON.stringify(p).replace(/'/g, "&apos;");
+        const badgeDistancia = p.distanciaKm != null
+          ? `<span class="bg-sky-950 text-sky-300 border border-sky-700 px-2 py-0.5 rounded-full font-bold text-[10px]">📍 A ${formatearDistancia(p.distanciaKm)}</span>`
+          : "";
 
         return `
         <div class="bg-slate-900 border ${entregado ? 'border-emerald-700/60' : 'border-indigo-700/70'} p-4 rounded-2xl space-y-2.5 text-xs shadow-lg">
           <div class="flex justify-between items-center">
-            <span class="font-extrabold text-sm text-white">${p.ID_Pedido} <span class="text-indigo-300 font-normal">(${p.Repartidor || 'Reparto'})</span></span>
+            <div class="flex items-center gap-1.5">
+              <span class="w-6 h-6 rounded-full ${entregado ? 'bg-emerald-600' : 'bg-amber-600'} text-white font-extrabold flex items-center justify-center text-[11px]">${idx + 1}</span>
+              <span class="font-extrabold text-sm text-white">${p.ID_Pedido}</span>
+              ${badgeDistancia}
+            </div>
             <span class="px-2.5 py-0.5 rounded-full font-bold ${pagado ? 'bg-emerald-900 text-emerald-300' : 'bg-rose-900/80 text-rose-200'}">
-              ${pagado ? '✅ Cobrado (' + p.Metodo_Pago + ')' : '💵 Cobrar: $' + Number(p.Total).toLocaleString('es-AR')}
+              ${pagado ? '✅ Cobrado (' + p.Metodo_Pago + ')' : '💵 $' + Number(p.Total).toLocaleString('es-AR')}
             </span>
           </div>
 
           <h3 class="text-base font-extrabold text-amber-400">${p.Nombre_Cliente}</h3>
-          <p class="text-slate-200 font-medium"><i class="fa-solid fa-location-dot text-rose-400 mr-1"></i> ${p.Direccion_Entrega}</p>
 
-          <div class="grid grid-cols-2 gap-2 pt-1">
+          <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-1 text-slate-200">
+            <p>📍 <b>Localidad:</b> ${p.Localidad || '-'} • <b>Zona:</b> <span class="text-amber-300">${p.Zona || 'Centro'}</span></p>
+            <p>🏘️ <b>Barrio:</b> ${p.Barrio || '-'}</p>
+            <p>🏠 <b>Calle / N°:</b> ${p.Calle_Numero || p.Direccion_Entrega}</p>
+            ${p.Referencia ? `<p class="text-sky-300">📝 <b>Ref:</b> ${p.Referencia}</p>` : ''}
+          </div>
+
+          ${tieneGPS ? `
+            <div class="flex gap-2">
+              <button onclick="enfocarPinEnMapaGeneral(${p.Latitud}, ${p.Longitud}, '${p.ID_Pedido}')" class="flex-1 bg-indigo-950 hover:bg-indigo-900 border border-indigo-700 text-indigo-200 font-bold py-2 rounded-xl flex justify-center items-center gap-1.5">
+                <i class="fa-solid fa-crosshairs text-amber-400"></i> Ver en Mapa General
+              </button>
+              <button onclick="toggleMapaIndividual('${p.ID_Pedido}', ${p.Latitud}, ${p.Longitud})" class="bg-slate-800 border border-slate-700 text-slate-300 font-bold px-3 py-2 rounded-xl">
+                <i class="fa-solid fa-map"></i> Mini Mapa
+              </button>
+            </div>
+            <div id="wrapMapaRep-${p.ID_Pedido}" class="hidden">
+              <div id="mapaRep-${p.ID_Pedido}" class="w-full h-40 rounded-xl border border-indigo-600 z-10"></div>
+            </div>
+          ` : ''}
+
+          <div class="grid grid-cols-2 gap-2">
             <a href="${urlMaps}" target="_blank" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-sky-300 font-bold py-2 rounded-xl flex justify-center items-center gap-1.5">
-              <i class="fa-solid fa-map-location-dot"></i> Abrir Mapa
+              <i class="fa-solid fa-diamond-turn-right"></i> Navegar GPS
             </a>
             <a href="${urlWA}" target="_blank" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-emerald-400 font-bold py-2 rounded-xl flex justify-center items-center gap-1.5">
               <i class="fa-brands fa-whatsapp"></i> Avisar Llegada
             </a>
           </div>
 
-          <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 text-slate-200">
-            <span class="text-[10px] text-slate-400 block mb-0.5">Bultos a entregar:</span>
-            <b>${p.Detalle_Legible}</b>
+          <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+            <b>📦 Entregar:</b> ${p.Detalle_Legible}
           </div>
 
-          <button onclick='abrirModalCobro(${jsonSeguro})' class="w-full ${entregado ? 'bg-slate-800 text-emerald-400 border border-emerald-700' : 'bg-emerald-500 hover:bg-emerald-400 text-slate-950'} font-extrabold py-3 rounded-xl text-sm shadow flex justify-center items-center gap-2">
-            <i class="fa-solid fa-hand-holding-dollar"></i>
-            <span>${entregado ? 'Editar Cobro / Ver Comprobante' : 'Entregar y Registrar Cobro ($' + Number(p.Total).toLocaleString('es-AR') + ')'}</span>
+          <button onclick='abrirModalCobro(${jsonSeguro})' class="w-full ${entregado ? 'bg-slate-800 text-emerald-400 border border-emerald-700' : 'bg-emerald-500 hover:bg-emerald-400 text-slate-950'} font-extrabold py-3 rounded-xl text-sm shadow">
+            💵 ${entregado ? 'Editar Cobro / Reenviar Comprobante' : 'Entregar y Registrar Cobro'}
           </button>
         </div>`;
       }).join("");
+    }
+
+    function toggleMapaIndividual(idPedido, lat, lng) {
+      const wrap = document.getElementById(`wrapMapaRep-${idPedido}`);
+      wrap.classList.toggle("hidden");
+      if (!wrap.classList.contains("hidden")) {
+        setTimeout(() => {
+          if (!mapasIndividuales[idPedido]) {
+            const m = L.map(`mapaRep-${idPedido}`).setView([lat, lng], 16);
+            L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(m);
+            L.marker([lat, lng]).addTo(m);
+            mapasIndividuales[idPedido] = m;
+          } else {
+            mapasIndividuales[idPedido].invalidateSize();
+          }
+        }, 120);
+      }
     }
 
     function selMetodo(met) {
@@ -247,7 +597,6 @@
       const montoTotal = document.getElementById("cobroMonto").innerText;
       const estadoPago = document.getElementById("cobroEstadoPago").value;
       const notasEntrega = document.getElementById("cobroNotas").value.trim();
-      const enviarWap = document.getElementById("chkEnviarWap").checked;
 
       const btn = document.getElementById("btnConfirmarCobro");
       btn.disabled = true;
@@ -277,23 +626,20 @@
       }
 
       btn.disabled = false;
-      btn.innerText = "✅ Marcar Entregado y Guardar Cobro";
+      btn.innerText = "✅ Confirmar Entrega y Pago";
       cerrarModalCobro();
       cargarRuta();
 
-      // Si está tildado, le abrimos el WhatsApp al repartidor con el comprobante listo para enviar al cliente
-      if (enviarWap && telCliente) {
+      if (document.getElementById("chkEnviarWap").checked && telCliente) {
         const textoComprobante = `🧾 *COMPROBANTE DE ENTREGA Y PAGO*\n\n` +
-          `✨ *Comercio:* ${nomCliente}\n` +
-          `📦 *Pedido:* ${idPedido}\n` +
-          `🛒 *Detalle:* ${detallePedido}\n` +
-          `💰 *Importe:* ${montoTotal}\n` +
-          `💳 *Estado del Pago:* ${estadoPago} (${metodoSeleccionado})\n` +
-          (notasEntrega ? `📝 *Observaciones:* ${notasEntrega}\n\n` : `\n`) +
-          `¡Muchas gracias por confiar en nosotros! 🙌🚚`;
-
-        const urlWA = `https://wa.me/${String(telCliente).replace(/\D/g, '')}?text=${encodeURIComponent(textoComprobante)}`;
-        window.open(urlWA, "_blank");
+          `✅ *Cliente:* ${nomCliente}\n` +
+          `✅ *Pedido:* ${idPedido}\n` +
+          `✅ *Detalle:* ${detallePedido}\n` +
+          `💰 *Total:* ${montoTotal}\n` +
+          `💳 *Pago:* ${estadoPago} (${metodoSeleccionado})\n` +
+          (notasEntrega ? `📝 *Nota:* ${notasEntrega}\n\n` : `\n`) +
+          `¡Muchísimas gracias por confiar en nosotros! 🙌`;
+        window.open(`https://wa.me/${String(telCliente).replace(/\D/g, '')}?text=${encodeURIComponent(textoComprobante)}`, "_blank");
       }
     }
   </script>
