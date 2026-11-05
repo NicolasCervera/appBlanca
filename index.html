@@ -243,7 +243,7 @@
 
   <script>
     // PEGÁ ACÁ TU URL DE APPS SCRIPT TERMINADA EN /exec
-    const API_URL = "URL_DE_TU_APPS_SCRIPT";
+    const API_URL = "https://script.google.com/macros/s/AKfycbw1Wy_NFUtmgqO_OmmstmCEXLMKtv9QX_tQpaDz0IiFJBwXf25IOz6mf1tvz98g1L7z/exec";
 
     let catalogo = [];
     let carrito = {};
@@ -254,9 +254,27 @@
     let marcadorCli = null;
 
     window.addEventListener("DOMContentLoaded", async () => {
-      await cargarCatalogo();
-      verificarMemoriaCliente();
-    });
+
+    // Cargar catálogo y verificar memoria del cliente
+    await cargarCatalogo();
+    verificarMemoriaCliente();
+
+    // Registrar el ingreso en la planilla apenas se abre la app
+    if (API_URL !== "URL_DE_TU_APPS_SCRIPT") {
+        fetch(API_URL, {
+            method: "POST",
+            headers: {
+                "Content-Type": "text/plain;charset=utf-8"
+            },
+            body: JSON.stringify({
+                action: "registrar_log",
+                app: "Cliente (index.html)",
+                userAgent: navigator.userAgent
+            })
+        }).catch(() => {});
+    }
+
+});
 
     function verificarMemoriaCliente() {
       const campos = ["nombre", "telefono", "localidad", "barrio", "calleNumero", "referencia", "zona", "lat", "lng"];
