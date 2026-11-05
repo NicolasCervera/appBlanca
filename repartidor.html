@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Hoja de Ruta - Repartidor & Cobranzas</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans pb-20">
+
+  <!-- HEADER DEL REPARTIDOR -->
+  <header class="bg-indigo-900 border-b border-indigo-700 p-4 sticky top-0 z-30 shadow-lg">
+    <div class="max-w-md mx-auto flex justify-between items-center">
+      <div>
+        <h1 class="text-base font-extrabold text-white"><i class="fa-solid fa-truck-fast text-amber-400 mr-1.5"></i> Hoja de Ruta y Cobros</h1>
+        <p class="text-xs text-indigo-200">Entregas del día y rendición de caja</p>
+      </div>
+      <button onclick="cargarRuta()" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1 shadow">
+        <i id="icoSyncRep" class="fa-solid fa-rotate"></i> Actualizar
+      </button>
+    </div>
+
+    <!-- Selector de Repartidor -->
+    <div class="max-w-md mx-auto mt-3 flex gap-2 items-center">
+      <select id="selChofer" onchange="cargarRuta()" class="flex-1 bg-indigo-950 border border-indigo-700 rounded-xl px-3 py-2 text-xs font-bold text-white">
+        <option value="Todos">🚚 Todos los Repartidores</option>
+        <option value="Repartidor 1">👤 Repartidor 1</option>
+        <option value="Repartidor 2">👤 Repartidor 2</option>
+      </select>
+      <select id="selVistaEstado" onchange="renderHojaRuta()" class="bg-indigo-950 border border-indigo-700 rounded-xl px-3 py-2 text-xs font-bold text-amber-300">
+        <option value="Enviado">⏳ Por Entregar</option>
+        <option value="Entregado">✅ Entregados</option>
+        <option value="Todos">📋 Todos</option>
+      </select>
+    </div>
+  </header>
+
+  <main class="max-w-md mx-auto p-3 space-y-3">
+
+    <!-- TARJETA DE RENDICIÓN DE CAJA DEL REPARTIDOR -->
+    <div class="grid grid-cols-3 gap-2 text-center text-xs">
+      <div class="bg-slate-900 border border-slate-800 p-2.5 rounded-2xl">
+        <p class="text-[10px] text-slate-400">Por Cobrar</p>
+        <p id="cajaPendiente" class="font-extrabold text-sm text-rose-400">$0</p>
+      </div>
+      <div class="bg-slate-900 border border-slate-800 p-2.5 rounded-2xl">
+        <p class="text-[10px] text-slate-400">Efectivo Cobrado</p>
+        <p id="cajaEfectivo" class="font-extrabold text-sm text-emerald-400">$0</p>
+      </div>
+      <div class="bg-slate-900 border border-slate-800 p-2.5 rounded-2xl">
+        <p class="text-[10px] text-slate-400">Transferencia</p>
+        <p id="cajaTransf" class="font-extrabold text-sm text-sky-400">$0</p>
+      </div>
+    </div>
+
+    <!-- LISTA DE PARADAS / ENTREGAS -->
+    <div id="listaEntregas" class="space-y-3">
+      <p class="text-center text-xs text-slate-500 py-10">Cargando hoja de ruta...</p>
+    </div>
+
+  </main>
+
+  <!-- MODAL PARA CONFIRMAR ENTREGA Y COBRO -->
+  <div id="modalCobro" class="fixed inset-0 bg-black/80 z-50 hidden flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="bg-slate-900 border border-slate-700 w-full max-w-md rounded-t-3xl sm:rounded-2xl p-5 space-y-3.5 text-xs">
+      <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+        <h3 class="font-extrabold text-sm text-amber-400" id="tituloModalCobro">Confirmar Entrega y Pago</h3>
+        <button onclick="cerrarModalCobro()" class="text-slate-400 text-2xl">&times;</button>
+      </div>
+
+      <input type="hidden" id="cobroIdPedido" />
+      <input type="hidden" id="cobroTelCliente" />
+      <input type="hidden" id="cobroNombreCliente" />
+      <input type="hidden" id="cobroDetallePedido" />
+
+      <div class="bg-slate-800 p-3 rounded-xl border border-slate-700 flex justify-between items-center">
+        <span class="text-slate-300 font-semibold">Total a Cobrar al Cliente:</span>
+        <span id="cobroMonto" class="text-lg font-extrabold text-emerald-400">$0</span>
+      </div>
+
+      <div>
+        <label class="text-slate-400 font-semibold">Estado del Pago *</label>
+        <select id="cobroEstadoPago" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 mt-1 font-bold text-white">
+          <option value="Pagado">✅ Pagado en la entrega</option>
+          <option value="Pendiente de Cobro">⏳ Queda Pendiente (Cuenta Corriente / Fiado)</option>
+        </select>
+      </div>
+
+      <div>
+        <label class="text-slate-400 font-semibold">Medio de Pago *</label>
+        <div class="grid grid-cols-2 gap-2 mt-1">
+          <button type="button" onclick="selMetodo('Efectivo')" id="btnMet-Efectivo" class="met-btn py-2.5 rounded-xl border-2 border-emerald-500 bg-emerald-500/20 text-emerald-300 font-bold">💵 Efectivo</button>
+          <button type="button" onclick="selMetodo('Transferencia')" id="btnMet-Transferencia" class="met-btn py-2.5 rounded-xl border border-slate-700 bg-slate-800 text-slate-300 font-bold">📲 Transferencia</button>
+          <button type="button" onclick="selMetodo('Cuenta Corriente')" id="btnMet-Cuenta Corriente" class="met-btn py-2.5 rounded-xl border border-slate-700 bg-slate-800 text-slate-300 font-bold">📓 Cta. Corriente</button>
+          <button type="button" onclick="selMetodo('Mixto')" id="btnMet-Mixto" class="met-btn py-2.5 rounded-xl border border-slate-700 bg-slate-800 text-slate-300 font-bold">🔄 Mixto</button>
+        </div>
+      </div>
+
+      <div>
+        <label class="text-slate-400 font-semibold">Observaciones / N° de Comprobante (opcional)</label>
+        <input id="cobroNotas" type="text" placeholder="Ej: Recibió Juan / Comprobante transf #45892" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 mt-1 text-white" />
+      </div>
+
+      <!-- CHECKBOX PARA ENVIAR COMPROBANTE AUTOMÁTICO POR WHATSAPP -->
+      <div class="flex items-center gap-2 bg-slate-800/80 p-2.5 rounded-xl border border-slate-700">
+        <input id="chkEnviarWap" type="checkbox" checked class="w-4 h-4 accent-emerald-500" />
+        <label for="chkEnviarWap" class="text-slate-200 font-semibold">Enviar comprobante por WhatsApp al cliente al guardar</label>
+      </div>
+
+      <button id="btnConfirmarCobro" onclick="guardarEntregaYCobro()" class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold py-3.5 rounded-xl text-sm shadow-lg">
+        ✅ Marcar Entregado y Guardar Cobro
+      </button>
+    </div>
+  </div>
+
+  <script>
+    // PEGÁ ACÁ TU URL DE APPS SCRIPT TERMINADA EN /exec
+    const API_URL = "https://script.google.com/macros/s/AKfycbwepR3bAMD5wY3gtACBX7wBi8hVpnH3Ez_0ZlEpu1skXHCON12DaU5965NI1f0B7kVT/exec";
+    let pedidosRuta = [];
+    let metodoSeleccionado = "Efectivo";
+
+    window.addEventListener("DOMContentLoaded", cargarRuta);
+
+    async function cargarRuta() {
+      const ico = document.getElementById("icoSyncRep");
+      ico.classList.add("fa-spin");
+      const chofer = document.getElementById("selChofer").value;
+
+      if (API_URL === "URL_DE_TU_APPS_SCRIPT") {
+        pedidosRuta = [
+          { ID_Pedido: "PED-1041", Nombre_Cliente: "Carnicería Don Tito", Telefono_Cliente: "5493875445566", Direccion_Entrega: "San Martín 120", Detalle_Legible: "2x Cajón de Pollo 20kg [Calibre 7]", Total: 126000, Estado: "Enviado", Repartidor: "Repartidor 1", Estado_Pago: "Pendiente de Cobro", Metodo_Pago: "Sin especificar" }
+        ];
+        ico.classList.remove("fa-spin");
+        renderHojaRuta();
+        return;
+      }
+
+      try {
+        const res = await fetch(`${API_URL}?action=repartidor_datos&repartidor=${encodeURIComponent(chofer)}`);
+        const data = await res.json();
+        if (data.status === "ok") {
+          pedidosRuta = data.pedidos || [];
+          renderHojaRuta();
+        }
+      } catch (e) {
+        alert("Error al cargar la hoja de ruta.");
+      } finally {
+        ico.classList.remove("fa-spin");
+      }
+    }
+
+    function renderHojaRuta() {
+      const porCobrar = pedidosRuta.filter(p => p.Estado_Pago !== "Pagado").reduce((a, b) => a + (Number(b.Total) || 0), 0);
+      const efvo = pedidosRuta.filter(p => p.Estado_Pago === "Pagado" && p.Metodo_Pago === "Efectivo").reduce((a, b) => a + (Number(b.Total) || 0), 0);
+      const transf = pedidosRuta.filter(p => p.Estado_Pago === "Pagado" && (p.Metodo_Pago === "Transferencia" || p.Metodo_Pago === "Mixto")).reduce((a, b) => a + (Number(b.Total) || 0), 0);
+
+      document.getElementById("cajaPendiente").innerText = "$" + porCobrar.toLocaleString("es-AR");
+      document.getElementById("cajaEfectivo").innerText = "$" + efvo.toLocaleString("es-AR");
+      document.getElementById("cajaTransf").innerText = "$" + transf.toLocaleString("es-AR");
+
+      const filtroEst = document.getElementById("selVistaEstado").value;
+      const lista = filtroEst === "Todos" ? pedidosRuta : pedidosRuta.filter(p => p.Estado === filtroEst);
+      const cont = document.getElementById("listaEntregas");
+
+      if (!lista.length) {
+        cont.innerHTML = `<p class="text-center text-xs text-slate-500 py-10">No hay entregas en esta categoría.</p>`;
+        return;
+      }
+
+      cont.innerHTML = lista.map(p => {
+        const entregado = p.Estado === "Entregado";
+        const pagado = p.Estado_Pago === "Pagado";
+        const urlMaps = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.Direccion_Entrega)}`;
+        const urlWA = `https://wa.me/${String(p.Telefono_Cliente).replace(/\D/g, '')}?text=${encodeURIComponent("🚚 ¡Hola " + p.Nombre_Cliente + "! Estoy llegando con el camión para entregarte tu pedido " + p.ID_Pedido + ".")}`;
+        const jsonSeguro = JSON.stringify(p).replace(/'/g, "&apos;");
+
+        return `
+        <div class="bg-slate-900 border ${entregado ? 'border-emerald-700/60' : 'border-indigo-700/70'} p-4 rounded-2xl space-y-2.5 text-xs shadow-lg">
+          <div class="flex justify-between items-center">
+            <span class="font-extrabold text-sm text-white">${p.ID_Pedido} <span class="text-indigo-300 font-normal">(${p.Repartidor || 'Reparto'})</span></span>
+            <span class="px-2.5 py-0.5 rounded-full font-bold ${pagado ? 'bg-emerald-900 text-emerald-300' : 'bg-rose-900/80 text-rose-200'}">
+              ${pagado ? '✅ Cobrado (' + p.Metodo_Pago + ')' : '💵 Cobrar: $' + Number(p.Total).toLocaleString('es-AR')}
+            </span>
+          </div>
+
+          <h3 class="text-base font-extrabold text-amber-400">${p.Nombre_Cliente}</h3>
+          <p class="text-slate-200 font-medium"><i class="fa-solid fa-location-dot text-rose-400 mr-1"></i> ${p.Direccion_Entrega}</p>
+
+          <div class="grid grid-cols-2 gap-2 pt-1">
+            <a href="${urlMaps}" target="_blank" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-sky-300 font-bold py-2 rounded-xl flex justify-center items-center gap-1.5">
+              <i class="fa-solid fa-map-location-dot"></i> Abrir Mapa
+            </a>
+            <a href="${urlWA}" target="_blank" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-emerald-400 font-bold py-2 rounded-xl flex justify-center items-center gap-1.5">
+              <i class="fa-brands fa-whatsapp"></i> Avisar Llegada
+            </a>
+          </div>
+
+          <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 text-slate-200">
+            <span class="text-[10px] text-slate-400 block mb-0.5">Bultos a entregar:</span>
+            <b>${p.Detalle_Legible}</b>
+          </div>
+
+          <button onclick='abrirModalCobro(${jsonSeguro})' class="w-full ${entregado ? 'bg-slate-800 text-emerald-400 border border-emerald-700' : 'bg-emerald-500 hover:bg-emerald-400 text-slate-950'} font-extrabold py-3 rounded-xl text-sm shadow flex justify-center items-center gap-2">
+            <i class="fa-solid fa-hand-holding-dollar"></i>
+            <span>${entregado ? 'Editar Cobro / Ver Comprobante' : 'Entregar y Registrar Cobro ($' + Number(p.Total).toLocaleString('es-AR') + ')'}</span>
+          </button>
+        </div>`;
+      }).join("");
+    }
+
+    function selMetodo(met) {
+      metodoSeleccionado = met;
+      if (met === "Cuenta Corriente") {
+        document.getElementById("cobroEstadoPago").value = "Pendiente de Cobro";
+      } else {
+        document.getElementById("cobroEstadoPago").value = "Pagado";
+      }
+      document.querySelectorAll(".met-btn").forEach(b => {
+        b.className = "met-btn py-2.5 rounded-xl border border-slate-700 bg-slate-800 text-slate-300 font-bold";
+      });
+      const act = document.getElementById(`btnMet-${met}`);
+      if (act) act.className = "met-btn py-2.5 rounded-xl border-2 border-emerald-500 bg-emerald-500/20 text-emerald-300 font-bold";
+    }
+
+    function abrirModalCobro(p) {
+      document.getElementById("cobroIdPedido").value = p.ID_Pedido;
+      document.getElementById("cobroTelCliente").value = p.Telefono_Cliente || "";
+      document.getElementById("cobroNombreCliente").value = p.Nombre_Cliente || "";
+      document.getElementById("cobroDetallePedido").value = p.Detalle_Legible || "";
+      document.getElementById("tituloModalCobro").innerText = `Entrega ${p.ID_Pedido} - ${p.Nombre_Cliente}`;
+      document.getElementById("cobroMonto").innerText = "$" + Number(p.Total).toLocaleString("es-AR");
+      document.getElementById("cobroNotas").value = p.Notas_Entrega || "";
+      selMetodo(p.Metodo_Pago && p.Metodo_Pago !== "Sin especificar" ? p.Metodo_Pago : "Efectivo");
+      document.getElementById("modalCobro").classList.remove("hidden");
+    }
+
+    function cerrarModalCobro() {
+      document.getElementById("modalCobro").classList.add("hidden");
+    }
+
+    async function guardarEntregaYCobro() {
+      const idPedido = document.getElementById("cobroIdPedido").value;
+      const telCliente = document.getElementById("cobroTelCliente").value;
+      const nomCliente = document.getElementById("cobroNombreCliente").value;
+      const detallePedido = document.getElementById("cobroDetallePedido").value;
+      const montoTotal = document.getElementById("cobroMonto").innerText;
+      const estadoPago = document.getElementById("cobroEstadoPago").value;
+      const notasEntrega = document.getElementById("cobroNotas").value.trim();
+      const enviarWap = document.getElementById("chkEnviarWap").checked;
+
+      const btn = document.getElementById("btnConfirmarCobro");
+      btn.disabled = true;
+      btn.innerText = "Guardando...";
+
+      if (API_URL !== "URL_DE_TU_APPS_SCRIPT") {
+        await fetch(API_URL, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify({
+            action: "registrar_entrega_cobro",
+            idPedido,
+            estadoEntrega: "Entregado",
+            estadoPago,
+            metodoPago: metodoSeleccionado,
+            notasEntrega
+          })
+        });
+      } else {
+        const p = pedidosRuta.find(x => x.ID_Pedido === idPedido);
+        if (p) {
+          p.Estado = "Entregado";
+          p.Estado_Pago = estadoPago;
+          p.Metodo_Pago = metodoSeleccionado;
+          p.Notas_Entrega = notasEntrega;
+        }
+      }
+
+      btn.disabled = false;
+      btn.innerText = "✅ Marcar Entregado y Guardar Cobro";
+      cerrarModalCobro();
+      cargarRuta();
+
+      // Si está tildado, le abrimos el WhatsApp al repartidor con el comprobante listo para enviar al cliente
+      if (enviarWap && telCliente) {
+        const textoComprobante = `🧾 *COMPROBANTE DE ENTREGA Y PAGO*\n\n` +
+          `✨ *Comercio:* ${nomCliente}\n` +
+          `📦 *Pedido:* ${idPedido}\n` +
+          `🛒 *Detalle:* ${detallePedido}\n` +
+          `💰 *Importe:* ${montoTotal}\n` +
+          `💳 *Estado del Pago:* ${estadoPago} (${metodoSeleccionado})\n` +
+          (notasEntrega ? `📝 *Observaciones:* ${notasEntrega}\n\n` : `\n`) +
+          `¡Muchas gracias por confiar en nosotros! 🙌🚚`;
+
+        const urlWA = `https://wa.me/${String(telCliente).replace(/\D/g, '')}?text=${encodeURIComponent(textoComprobante)}`;
+        window.open(urlWA, "_blank");
+      }
+    }
+  </script>
+</body>
+</html>
