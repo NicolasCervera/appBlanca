@@ -16,6 +16,16 @@
 <body class="bg-slate-900 text-slate-100 min-h-screen font-sans pb-20">
 
   <!-- ========================================== -->
+  <!-- CARTEL FLOTANTE DE ESTADO / CARGA (TOAST)  -->
+  <!-- ========================================== -->
+  <div id="toastEstado" class="fixed top-4 left-1/2 -translate-x-1/2 z-[60] hidden transition-all duration-300 w-[92%] max-w-md">
+    <div id="toastCaja" class="bg-indigo-600 border border-indigo-400 text-white px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-3 text-xs font-extrabold">
+      <i id="toastIcono" class="fa-solid fa-spinner fa-spin text-base"></i>
+      <span id="toastTexto" class="flex-1">Procesando cambios en la base de datos...</span>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
   <!-- PANTALLA DE LOGIN POR ROL                  -->
   <!-- ========================================== -->
   <div id="modalLogin" class="fixed inset-0 bg-slate-950/95 z-50 flex items-center justify-center p-4">
@@ -367,7 +377,7 @@
         </div>
       </div>
 
-      <button onclick="guardarPedidoAdmin()" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold py-3 rounded-xl mt-2">
+      <button id="btnGuardarPedidoModal" onclick="guardarPedidoAdmin()" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold py-3 rounded-xl mt-2">
         Guardar Pedido
       </button>
     </div>
@@ -403,7 +413,7 @@
         <label class="text-slate-400 font-semibold">Días de Visita / Reparto *</label>
         <input id="cliDias" type="text" placeholder="Ej: Lunes, Jueves" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 mt-1" />
       </div>
-      <button onclick="guardarClienteAdmin()" class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold py-3 rounded-xl mt-2">
+      <button id="btnGuardarClienteModal" onclick="guardarClienteAdmin()" class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold py-3 rounded-xl mt-2">
         Guardar Cliente
       </button>
     </div>
@@ -456,7 +466,7 @@
         <input id="prodActivo" type="checkbox" checked class="w-4 h-4 accent-amber-500" />
         <label for="prodActivo" class="text-slate-300 font-semibold">Producto Activo en el catálogo</label>
       </div>
-      <button onclick="guardarProductoCompleto()" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold py-3 rounded-xl mt-2">
+      <button id="btnGuardarProductoModal" onclick="guardarProductoCompleto()" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold py-3 rounded-xl mt-2">
         Guardar Producto
       </button>
     </div>
@@ -489,7 +499,7 @@
         <input id="iaActivo" type="checkbox" checked class="w-4 h-4 accent-amber-500" />
         <label for="iaActivo" class="text-slate-300 font-semibold">Regla Activa</label>
       </div>
-      <button onclick="guardarReglaIA()" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold py-3 rounded-xl mt-2">
+      <button id="btnGuardarIAModal" onclick="guardarReglaIA()" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold py-3 rounded-xl mt-2">
         Guardar Regla IA
       </button>
     </div>
@@ -512,6 +522,7 @@
     let filtroEstadoPed = "Todos";
     let filtroRubroProd = "Todos";
     let mapasAdmin = {};
+    let timerToast = null;
 
     // Estado de Difusión Masiva
     let flyerBase64 = "";
@@ -528,6 +539,38 @@
       }
       cargarDatosAdmin();
     });
+
+    // ==========================================
+    // FUNCIÓN DE AVISO VISUAL EN PANTALLA (TOAST)
+    // ==========================================
+    function mostrarAvisoEstado(mensaje, tipo = "cargando", autoOcultarMs = 0) {
+      const toast = document.getElementById("toastEstado");
+      const caja = document.getElementById("toastCaja");
+      const icono = document.getElementById("toastIcono");
+      const texto = document.getElementById("toastTexto");
+
+      if (timerToast) clearTimeout(timerToast);
+
+      texto.innerText = mensaje;
+      toast.classList.remove("hidden");
+
+      if (tipo === "cargando") {
+        caja.className = "bg-indigo-600 border border-indigo-400 text-white px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-3 text-xs font-extrabold";
+        icono.className = "fa-solid fa-spinner fa-spin text-base";
+      } else if (tipo === "exito") {
+        caja.className = "bg-emerald-600 border border-emerald-400 text-white px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-3 text-xs font-extrabold";
+        icono.className = "fa-solid fa-circle-check text-base";
+      } else {
+        caja.className = "bg-rose-600 border border-rose-400 text-white px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-3 text-xs font-extrabold";
+        icono.className = "fa-solid fa-triangle-exclamation text-base";
+      }
+
+      if (autoOcultarMs > 0) {
+        timerToast = setTimeout(() => {
+          toast.classList.add("hidden");
+        }, autoOcultarMs);
+      }
+    }
 
     async function postAPI(payload) {
       const res = await fetch(API_URL, {
@@ -606,22 +649,33 @@
     // ==========================================
     // 2. ELIMINAR REGISTRO (BAJA EN LAS 4 TABLAS)
     // ==========================================
-    async function eliminarRegistro(tabla, id, etiqueta) {
+    async function eliminarRegistro(tabla, id, etiqueta, btnEl = null) {
       if (!confirm(`⚠️ ¿Seguro que querés ELIMINAR definitivamente "${etiqueta}" (${id}) de la tabla ${tabla}?`)) return;
 
-      if (API_URL !== "MODO_DEMO") {
-        const data = await postAPI({ action: "eliminar_registro", tabla, id });
-        if (data.status !== "ok") {
-          alert(data.message || "Error al eliminar");
-          return;
-        }
-      } else {
-        if (tabla === "Productos") productos = productos.filter(x => x.ID_Producto !== id);
-        if (tabla === "Clientes") clientes = clientes.filter(x => x.ID_Cliente !== id);
-        if (tabla === "Pedidos") pedidos = pedidos.filter(x => x.ID_Pedido !== id);
-        if (tabla === "Conocimiento_IA") conocimiento = conocimiento.filter(x => x.ID_Regla !== id);
+      if (btnEl) {
+        btnEl.disabled = true;
+        btnEl.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i>`;
       }
-      cargarDatosAdmin();
+      mostrarAvisoEstado(`🗑️ Eliminando ${etiqueta} (${id})...`, "cargando");
+
+      try {
+        if (API_URL !== "MODO_DEMO") {
+          const data = await postAPI({ action: "eliminar_registro", tabla, id });
+          if (data.status !== "ok") {
+            mostrarAvisoEstado(data.message || "Error al eliminar", "error", 3500);
+            return;
+          }
+        } else {
+          if (tabla === "Productos") productos = productos.filter(x => x.ID_Producto !== id);
+          if (tabla === "Clientes") clientes = clientes.filter(x => x.ID_Cliente !== id);
+          if (tabla === "Pedidos") pedidos = pedidos.filter(x => x.ID_Pedido !== id);
+          if (tabla === "Conocimiento_IA") conocimiento = conocimiento.filter(x => x.ID_Regla !== id);
+        }
+        await cargarDatosAdmin();
+        mostrarAvisoEstado(`✅ Registro ${id} eliminado correctamente.`, "exito", 2800);
+      } catch (err) {
+        mostrarAvisoEstado("❌ Error de conexión al intentar eliminar.", "error", 3500);
+      }
     }
 
     // ==========================================
@@ -665,7 +719,7 @@
           renderTodo();
         }
       } catch (e) {
-        alert("Error al conectar con Google Sheets.");
+        mostrarAvisoEstado("Error al sincronizar con Google Sheets.", "error", 3500);
       } finally {
         icono.classList.remove("fa-spin");
       }
@@ -724,14 +778,14 @@
                 <span class="text-[11px] text-slate-400 ml-1">${p.Fecha_Hora || ''}</span>
               </div>
               <div class="flex items-center gap-1">
-                <select onchange="actualizarLogisticaPedido('${p.ID_Pedido}', this.value, null)" class="bg-slate-900 border border-slate-600 rounded-lg px-2 py-1 font-bold text-xs text-amber-300">
+                <select onchange="actualizarLogisticaPedido('${p.ID_Pedido}', this.value, null, this)" class="bg-slate-900 border border-slate-600 rounded-lg px-2 py-1 font-bold text-xs text-amber-300">
                   <option value="Pendiente" ${p.Estado === 'Pendiente' ? 'selected' : ''}>⏳ Pendiente</option>
                   <option value="En Preparación" ${p.Estado === 'En Preparación' ? 'selected' : ''}>🔪 En Preparación</option>
                   <option value="Enviado" ${p.Estado === 'Enviado' ? 'selected' : ''}>🚚 En Reparto (Enviado)</option>
                   <option value="Entregado" ${p.Estado === 'Entregado' ? 'selected' : ''}>✅ Entregado</option>
                   <option value="Cancelado" ${p.Estado === 'Cancelado' ? 'selected' : ''}>❌ Cancelado</option>
                 </select>
-                <button onclick="eliminarRegistro('Pedidos', '${p.ID_Pedido}', 'Pedido de ${p.Nombre_Cliente}')" class="bg-red-900/50 hover:bg-red-700 text-red-200 px-2.5 py-1 rounded-lg" title="Eliminar Pedido">
+                <button onclick="eliminarRegistro('Pedidos', '${p.ID_Pedido}', 'Pedido de ${p.Nombre_Cliente}', this)" class="bg-red-900/50 hover:bg-red-700 text-red-200 px-2.5 py-1 rounded-lg" title="Eliminar Pedido">
                   <i class="fa-solid fa-trash"></i>
                 </button>
               </div>
@@ -771,7 +825,7 @@
             <div class="grid grid-cols-2 gap-2 pt-1">
               <div class="bg-slate-900/80 p-2 rounded-xl border border-slate-700">
                 <label class="text-[10px] text-slate-400 block">🚚 Repartidor asignado:</label>
-                <select onchange="actualizarLogisticaPedido('${p.ID_Pedido}', null, this.value)" class="w-full bg-transparent font-bold text-indigo-300 mt-0.5 focus:outline-none">
+                <select onchange="actualizarLogisticaPedido('${p.ID_Pedido}', null, this.value, this)" class="w-full bg-transparent font-bold text-indigo-300 mt-0.5 focus:outline-none">
                   <option class="bg-slate-900" value="Repartidor 1" ${(p.Repartidor || 'Repartidor 1') === 'Repartidor 1' ? 'selected' : ''}>Repartidor 1</option>
                   <option class="bg-slate-900" value="Repartidor 2" ${p.Repartidor === 'Repartidor 2' ? 'selected' : ''}>Repartidor 2</option>
                   <option class="bg-slate-900" value="Mostrador / Retira" ${p.Repartidor === 'Mostrador / Retira' ? 'selected' : ''}>Mostrador / Retira</option>
@@ -795,8 +849,8 @@
                   ? `<button onclick='abrirModalPedido(${jsonSeguro})' class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-xl font-bold flex items-center gap-1">
                       <i class="fa-solid fa-pen"></i> Editar
                      </button>
-                     <button onclick="actualizarLogisticaPedido('${p.ID_Pedido}', 'Enviado', null)" class="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded-xl font-bold flex items-center gap-1">
-                      <i class="fa-solid fa-truck"></i> Mandar a Reparto
+                     <button onclick="actualizarLogisticaPedido('${p.ID_Pedido}', 'Enviado', null, this)" class="bg-indigo-600 hover:bg-indigo-500 active:scale-95 transition text-white px-3 py-1.5 rounded-xl font-bold flex items-center gap-1 shadow">
+                      <i class="fa-solid fa-truck"></i> <span>Mandar a Reparto</span>
                      </button>`
                   : `<span class="text-[11px] text-indigo-300 font-semibold px-2 py-1 bg-indigo-950/60 rounded-lg border border-indigo-800/50">🔒 En Reparto / Entregado</span>`
               }
@@ -823,26 +877,55 @@
       }
     }
 
-    async function actualizarLogisticaPedido(idPedido, nuevoEstado, nuevoRepartidor) {
+    // FUNCIÓN MEJORADA CON FEEDBACK INMEDIATO EN EL BOTÓN Y CARTEL FLOTANTE
+    async function actualizarLogisticaPedido(idPedido, nuevoEstado, nuevoRepartidor, elementoHTML = null) {
       const p = pedidos.find(x => x.ID_Pedido === idPedido);
       if (!p) return;
 
       const estadoFinal = nuevoEstado || p.Estado;
       const repartidorFinal = nuevoRepartidor || p.Repartidor || "Repartidor 1";
 
-      if (API_URL !== "MODO_DEMO") {
-        await postAPI({
-          action: "cambiar_estado",
-          idPedido,
-          nuevoEstado: estadoFinal,
-          repartidor: repartidorFinal,
-          autor: rolActual
-        });
-      } else {
-        p.Estado = estadoFinal;
-        p.Repartidor = repartidorFinal;
+      // Feedback visual inmediato en el botón o selector clickeado
+      if (elementoHTML) {
+        elementoHTML.disabled = true;
+        if (elementoHTML.tagName === "BUTTON") {
+          elementoHTML.className = "bg-amber-500 text-slate-950 px-3 py-1.5 rounded-xl font-extrabold flex items-center gap-1.5 shadow cursor-wait";
+          elementoHTML.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> <span>Enviando a reparto...</span>`;
+        } else {
+          elementoHTML.classList.add("opacity-50", "cursor-wait");
+        }
       }
-      cargarDatosAdmin();
+
+      // Cartel flotante superior avisando al usuario que se está actualizando
+      const textoAccion = nuevoEstado === "Enviado"
+        ? `🚚 Mandando pedido ${idPedido} (${p.Nombre_Cliente}) a la Hoja de Ruta del Repartidor...`
+        : `⏳ Actualizando pedido ${idPedido} en la base de datos...`;
+      mostrarAvisoEstado(textoAccion, "cargando");
+
+      try {
+        if (API_URL !== "MODO_DEMO") {
+          await postAPI({
+            action: "cambiar_estado",
+            idPedido,
+            nuevoEstado: estadoFinal,
+            repartidor: repartidorFinal,
+            autor: rolActual
+          });
+        } else {
+          p.Estado = estadoFinal;
+          p.Repartidor = repartidorFinal;
+        }
+
+        await cargarDatosAdmin();
+
+        const msgExito = nuevoEstado === "Enviado"
+          ? `✅ ¡Pedido ${idPedido} enviado a reparto! Ya está disponible en la pantalla del repartidor.`
+          : `✅ Pedido ${idPedido} actualizado a "${estadoFinal}" (${repartidorFinal}).`;
+        mostrarAvisoEstado(msgExito, "exito", 3500);
+      } catch (err) {
+        mostrarAvisoEstado(`❌ Error de red al actualizar el pedido ${idPedido}. Intentá nuevamente.`, "error", 4000);
+        if (elementoHTML) elementoHTML.disabled = false;
+      }
     }
 
     function abrirModalPedido(p = null) {
@@ -911,23 +994,38 @@
         fechaEntrega
       };
 
-      if (API_URL !== "MODO_DEMO") {
-        const data = await postAPI(payload);
-        if (data.status === "error") {
-          alert(data.message);
-          return;
-        }
-      } else {
-        if (idPedido) {
-          const idx = pedidos.findIndex(x => x.ID_Pedido === idPedido);
-          if (idx > -1) pedidos[idx] = { ...pedidos[idx], Nombre_Cliente: nombre, Telefono_Cliente: telefono, Direccion_Entrega: direccion, Localidad: localidad, Barrio: barrio, Calle_Numero: calleNumero, Referencia: referencia, Zona: zona, Latitud: latitud, Longitud: longitud, Detalle_Legible: detalleLegible, Total: total, Repartidor: repartidor, Fecha_Entrega: fechaEntrega };
-        } else {
-          pedidos.unshift({ ID_Pedido: "PED-" + Math.floor(1000 + Math.random() * 9000), Fecha_Hora: "Recién", Nombre_Cliente: nombre, Telefono_Cliente: telefono, Direccion_Entrega: direccion, Localidad: localidad, Barrio: barrio, Calle_Numero: calleNumero, Referencia: referencia, Zona: zona, Latitud: latitud, Longitud: longitud, Detalle_Legible: detalleLegible, Total: total, Estado: "Pendiente", Repartidor: repartidor, Fecha_Entrega: fechaEntrega, Estado_Pago: "Pendiente de Cobro" });
-        }
-      }
+      const btn = document.getElementById("btnGuardarPedidoModal");
+      btn.disabled = true;
+      btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-1"></i> Guardando pedido...`;
+      mostrarAvisoEstado("⏳ Guardando datos del pedido...", "cargando");
 
-      cerrarModal("modalPedido");
-      cargarDatosAdmin();
+      try {
+        if (API_URL !== "MODO_DEMO") {
+          const data = await postAPI(payload);
+          if (data.status === "error") {
+            mostrarAvisoEstado(data.message, "error", 4000);
+            btn.disabled = false;
+            btn.innerText = "Guardar Pedido";
+            return;
+          }
+        } else {
+          if (idPedido) {
+            const idx = pedidos.findIndex(x => x.ID_Pedido === idPedido);
+            if (idx > -1) pedidos[idx] = { ...pedidos[idx], Nombre_Cliente: nombre, Telefono_Cliente: telefono, Direccion_Entrega: direccion, Localidad: localidad, Barrio: barrio, Calle_Numero: calleNumero, Referencia: referencia, Zona: zona, Latitud: latitud, Longitud: longitud, Detalle_Legible: detalleLegible, Total: total, Repartidor: repartidor, Fecha_Entrega: fechaEntrega };
+          } else {
+            pedidos.unshift({ ID_Pedido: "PED-" + Math.floor(1000 + Math.random() * 9000), Fecha_Hora: "Recién", Nombre_Cliente: nombre, Telefono_Cliente: telefono, Direccion_Entrega: direccion, Localidad: localidad, Barrio: barrio, Calle_Numero: calleNumero, Referencia: referencia, Zona: zona, Latitud: latitud, Longitud: longitud, Detalle_Legible: detalleLegible, Total: total, Estado: "Pendiente", Repartidor: repartidor, Fecha_Entrega: fechaEntrega, Estado_Pago: "Pendiente de Cobro" });
+          }
+        }
+
+        cerrarModal("modalPedido");
+        await cargarDatosAdmin();
+        mostrarAvisoEstado("✅ Pedido guardado correctamente.", "exito", 3000);
+      } catch (e) {
+        mostrarAvisoEstado("❌ Error al guardar el pedido.", "error", 3500);
+      } finally {
+        btn.disabled = false;
+        btn.innerText = "Guardar Pedido";
+      }
     }
 
     // ==========================================
@@ -952,7 +1050,8 @@
     async function publicarYGuardarPromo() {
       const btn = document.getElementById("btnGuardarPromo");
       btn.disabled = true;
-      btn.innerText = "Subiendo flyer...";
+      btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Subiendo flyer...`;
+      mostrarAvisoEstado("⏳ Subiendo flyer promocional y actualizando catálogo...", "cargando");
 
       const payload = {
         action: "guardar_promocion",
@@ -964,17 +1063,19 @@
         imagenNombre: flyerNombre
       };
 
-      if (API_URL !== "MODO_DEMO") {
-        const res = await postAPI(payload);
-        if (res.urlImagen) urlImagenPromoSubida = res.urlImagen;
-        alert("✅ Promoción publicada en el catálogo de los clientes y lista para difundir por WhatsApp.");
-      } else {
-        alert("✅ Promoción cargada (Modo Demo).");
+      try {
+        if (API_URL !== "MODO_DEMO") {
+          const res = await postAPI(payload);
+          if (res.urlImagen) urlImagenPromoSubida = res.urlImagen;
+        }
+        mostrarAvisoEstado("✅ Promoción publicada en el catálogo y lista para difundir.", "exito", 3500);
+      } catch (e) {
+        mostrarAvisoEstado("❌ Error al subir la promoción.", "error", 3500);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<i class="fa-solid fa-cloud-arrow-up"></i> Publicar Promo en App`;
+        renderDifusionMasiva();
       }
-
-      btn.disabled = false;
-      btn.innerHTML = `<i class="fa-solid fa-cloud-arrow-up"></i> Publicar Promo en App`;
-      renderDifusionMasiva();
     }
 
     function armarTextoPromoWA(nombreCliente) {
@@ -1057,7 +1158,7 @@
                 <button onclick='abrirModalCliente(${jsonSeguro})' class="text-slate-300 hover:text-amber-400 px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-700" title="Editar Cliente">
                   <i class="fa-solid fa-pen"></i>
                 </button>
-                <button onclick="eliminarRegistro('Clientes', '${c.ID_Cliente}', '${c.Nombre_Comercio}')" class="text-red-300 hover:bg-red-700 px-2.5 py-1 rounded-lg bg-red-950/60 border border-red-800/50" title="Eliminar Cliente">
+                <button onclick="eliminarRegistro('Clientes', '${c.ID_Cliente}', '${c.Nombre_Comercio}', this)" class="text-red-300 hover:bg-red-700 px-2.5 py-1 rounded-lg bg-red-950/60 border border-red-800/50" title="Eliminar Cliente">
                   <i class="fa-solid fa-trash"></i>
                 </button>
               </div>
@@ -1100,9 +1201,23 @@
         alert("Completá comercio y WhatsApp.");
         return;
       }
-      if (API_URL !== "MODO_DEMO") await postAPI(payload);
-      cerrarModal("modalCliente");
-      cargarDatosAdmin();
+
+      const btn = document.getElementById("btnGuardarClienteModal");
+      btn.disabled = true;
+      btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-1"></i> Guardando...`;
+      mostrarAvisoEstado("⏳ Guardando cliente en la cartera...", "cargando");
+
+      try {
+        if (API_URL !== "MODO_DEMO") await postAPI(payload);
+        cerrarModal("modalCliente");
+        await cargarDatosAdmin();
+        mostrarAvisoEstado("✅ Cliente guardado correctamente.", "exito", 2800);
+      } catch (e) {
+        mostrarAvisoEstado("❌ Error al guardar cliente.", "error", 3500);
+      } finally {
+        btn.disabled = false;
+        btn.innerText = "Guardar Cliente";
+      }
     }
 
     // ==========================================
@@ -1156,7 +1271,7 @@
             <button onclick='abrirModalProducto(${jsonSeguro})' class="bg-slate-700 hover:bg-slate-600 text-slate-200 px-2.5 py-2 rounded-xl" title="Editar Producto">
               <i class="fa-solid fa-pen"></i>
             </button>
-            <button onclick="eliminarRegistro('Productos', '${p.ID_Producto}', '${p.Nombre}')" class="bg-red-900/60 hover:bg-red-700 text-red-200 px-2.5 py-2 rounded-xl" title="Eliminar Producto">
+            <button onclick="eliminarRegistro('Productos', '${p.ID_Producto}', '${p.Nombre}', this)" class="bg-red-900/60 hover:bg-red-700 text-red-200 px-2.5 py-2 rounded-xl" title="Eliminar Producto">
               <i class="fa-solid fa-trash"></i>
             </button>
           </div>
@@ -1170,19 +1285,28 @@
       const nuevoActivo = document.getElementById(`fastActivo-${idProd}`).checked;
 
       const originalHTML = btn.innerHTML;
+      btn.disabled = true;
       btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i>`;
+      mostrarAvisoEstado(`⏳ Actualizando precio y stock de ${idProd}...`, "cargando");
 
-      if (API_URL !== "MODO_DEMO") {
-        await postAPI({
-          action: "actualizar_precio_rapido",
-          ID_Producto: idProd,
-          Precio: nuevoPrecio,
-          Stock_Disponible: nuevoStock,
-          Activo: nuevoActivo
-        });
+      try {
+        if (API_URL !== "MODO_DEMO") {
+          await postAPI({
+            action: "actualizar_precio_rapido",
+            ID_Producto: idProd,
+            Precio: nuevoPrecio,
+            Stock_Disponible: nuevoStock,
+            Activo: nuevoActivo
+          });
+        }
+        btn.innerHTML = `<i class="fa-solid fa-check-double"></i> Listo`;
+        await cargarDatosAdmin();
+        mostrarAvisoEstado(`✅ Precio y stock actualizados ($${nuevoPrecio.toLocaleString('es-AR')}).`, "exito", 2500);
+      } catch (e) {
+        mostrarAvisoEstado("❌ Error al actualizar el precio.", "error", 3500);
+        btn.disabled = false;
+        btn.innerHTML = originalHTML;
       }
-      btn.innerHTML = `<i class="fa-solid fa-check-double"></i> Listo`;
-      setTimeout(() => { btn.innerHTML = originalHTML; cargarDatosAdmin(); }, 700);
     }
 
     function abrirModalProducto(p = null) {
@@ -1214,9 +1338,23 @@
         alert("Completá nombre y calibre.");
         return;
       }
-      if (API_URL !== "MODO_DEMO") await postAPI(payload);
-      cerrarModal("modalProducto");
-      cargarDatosAdmin();
+
+      const btn = document.getElementById("btnGuardarProductoModal");
+      btn.disabled = true;
+      btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-1"></i> Guardando...`;
+      mostrarAvisoEstado("⏳ Guardando producto en el catálogo...", "cargando");
+
+      try {
+        if (API_URL !== "MODO_DEMO") await postAPI(payload);
+        cerrarModal("modalProducto");
+        await cargarDatosAdmin();
+        mostrarAvisoEstado("✅ Producto guardado correctamente.", "exito", 2800);
+      } catch (e) {
+        mostrarAvisoEstado("❌ Error al guardar el producto.", "error", 3500);
+      } finally {
+        btn.disabled = false;
+        btn.innerText = "Guardar Producto";
+      }
     }
 
     // ==========================================
@@ -1246,7 +1384,7 @@
             <button onclick='abrirModalIA(${jsonSeguro})' class="bg-slate-900 hover:bg-slate-700 border border-slate-700 text-amber-400 px-3 py-2 rounded-xl font-bold">
               <i class="fa-solid fa-pen"></i>
             </button>
-            <button onclick="eliminarRegistro('Conocimiento_IA', '${r.ID_Regla}', '${r.Topico}')" class="bg-red-950/60 hover:bg-red-700 border border-red-800/50 text-red-300 px-3 py-2 rounded-xl font-bold">
+            <button onclick="eliminarRegistro('Conocimiento_IA', '${r.ID_Regla}', '${r.Topico}', this)" class="bg-red-950/60 hover:bg-red-700 border border-red-800/50 text-red-300 px-3 py-2 rounded-xl font-bold">
               <i class="fa-solid fa-trash"></i>
             </button>
           </div>
@@ -1275,9 +1413,23 @@
         alert("Escribí la instrucción.");
         return;
       }
-      if (API_URL !== "MODO_DEMO") await postAPI(payload);
-      cerrarModal("modalIA");
-      cargarDatosAdmin();
+
+      const btn = document.getElementById("btnGuardarIAModal");
+      btn.disabled = true;
+      btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-1"></i> Guardando...`;
+      mostrarAvisoEstado("⏳ Guardando regla de conocimiento para la IA...", "cargando");
+
+      try {
+        if (API_URL !== "MODO_DEMO") await postAPI(payload);
+        cerrarModal("modalIA");
+        await cargarDatosAdmin();
+        mostrarAvisoEstado("✅ Regla de IA guardada correctamente.", "exito", 2800);
+      } catch (e) {
+        mostrarAvisoEstado("❌ Error al guardar la regla IA.", "error", 3500);
+      } finally {
+        btn.disabled = false;
+        btn.innerText = "Guardar Regla IA";
+      }
     }
   </script>
 </body>
