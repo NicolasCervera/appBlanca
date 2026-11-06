@@ -208,7 +208,7 @@
       ico.classList.add("fa-spin");
       const chofer = document.getElementById("selChofer").value;
 
-      if (API_URL === "https://script.google.com/macros/s/AKfycbzbs22ZMC47lXKDFwbTEwplw2DiB6H6JwA8AWMLNMHvD-5xxSoK4aKAHnClMXZwI9k/exec") {
+      if (API_URL === "MODO_DEMO") {
         // 3 paradas de ejemplo con coordenadas reales en General Güemes para probar el Mapa General
         pedidosRuta = [
           {
@@ -602,7 +602,7 @@
       btn.disabled = true;
       btn.innerText = "Guardando...";
 
-      if (API_URL !== "https://script.google.com/macros/s/AKfycbzbs22ZMC47lXKDFwbTEwplw2DiB6H6JwA8AWMLNMHvD-5xxSoK4aKAHnClMXZwI9k/exec") {
+      if (API_URL !== "MODO_DEMO") {
         await fetch(API_URL, {
           method: "POST",
           headers: { "Content-Type": "text/plain;charset=utf-8" },

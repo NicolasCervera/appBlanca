@@ -362,7 +362,7 @@
     }
 
     async function cargarCatalogo() {
-      if (API_URL === "https://script.google.com/macros/s/AKfycbzbs22ZMC47lXKDFwbTEwplw2DiB6H6JwA8AWMLNMHvD-5xxSoK4aKAHnClMXZwI9k/exec") {
+      if (API_URL === "MODO_DEMO") {
         catalogo = [
           { ID_Producto: "P01", Rubro: "Pollería", Nombre: "Cajón de Pollo Óptimo 20kg", Calibre_Variante: "Calibre N7 (Grande / Trozar)", Precio: 56000, Stock_Disponible: 25 },
           { ID_Producto: "P02", Rubro: "Pollería", Nombre: "Cajón de Pollo 20kg", Calibre_Variante: "Calibre N8 (Rotisería / Spiedo)", Precio: 54000, Stock_Disponible: 18 },
@@ -573,7 +573,7 @@
 
       let idFinal = pedidoEnEdicion || "PED-" + Math.floor(1000 + Math.random() * 9000);
 
-      if (API_URL !== "https://script.google.com/macros/s/AKfycbzbs22ZMC47lXKDFwbTEwplw2DiB6H6JwA8AWMLNMHvD-5xxSoK4aKAHnClMXZwI9k/exec") {
+      if (API_URL !== "MODO_DEMO") {
         try {
           const res = await fetch(API_URL, {
             method: "POST",
@@ -634,7 +634,7 @@
       const cont = document.getElementById("resultadoPedido");
       cont.innerHTML = `<p class="text-xs text-slate-500 text-center py-6">Buscando pedido...</p>`;
 
-      if (API_URL === "https://script.google.com/macros/s/AKfycbzbs22ZMC47lXKDFwbTEwplw2DiB6H6JwA8AWMLNMHvD-5xxSoK4aKAHnClMXZwI9k/exec") {
+      if (API_URL === "MODO_DEMO") {
         cont.innerHTML = `<div class="bg-amber-50 border p-3 rounded-xl text-xs">Conectá tu URL_DE_TU_APPS_SCRIPT para buscar pedidos en vivo.</div>`;
         return;
       }
@@ -734,7 +734,7 @@
       input.value = "";
       chat.scrollTop = chat.scrollHeight;
 
-      if (API_URL === "https://script.google.com/macros/s/AKfycbzbs22ZMC47lXKDFwbTEwplw2DiB6H6JwA8AWMLNMHvD-5xxSoK4aKAHnClMXZwI9k/exec") {
+      if (API_URL === "MODO_DEMO") {
         setTimeout(() => {
           chat.innerHTML += `<div class="bg-slate-100 text-slate-800 p-2.5 rounded-2xl rounded-tl-none max-w-[85%]">¡Hola! Esta semana tenemos Cajón de Pollo N7 a $56.000, Carne Molida a $10.900/kg y Matambre a $11.500/kg.</div>`;
           chat.scrollTop = chat.scrollHeight;
