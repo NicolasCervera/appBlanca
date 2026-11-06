@@ -497,7 +497,7 @@
 
   <script>
     // PEGÁ ACÁ TU URL DE APPS SCRIPT TERMINADA EN /exec
-    const API_URL = "https://script.google.com/macros/s/AKfycbw1Wy_NFUtmgqO_OmmstmCEXLMKtv9QX_tQpaDz0IiFJBwXf25IOz6mf1tvz98g1L7z/exec";
+    const API_URL = "https://script.google.com/macros/s/AKfycbzbs22ZMC47lXKDFwbTEwplw2DiB6H6JwA8AWMLNMHvD-5xxSoK4aKAHnClMXZwI9k/exec";
     const URL_APP_CLIENTE = "https://appblanca.emilionicolascervera.workers.dev/";
 
     const PINES = { Secretario: "1234", Gerente: "9999" };
@@ -609,7 +609,7 @@
     async function eliminarRegistro(tabla, id, etiqueta) {
       if (!confirm(`⚠️ ¿Seguro que querés ELIMINAR definitivamente "${etiqueta}" (${id}) de la tabla ${tabla}?`)) return;
 
-      if (API_URL !== "URL_DE_TU_APPS_SCRIPT") {
+      if (API_URL !== "https://script.google.com/macros/s/AKfycbzbs22ZMC47lXKDFwbTEwplw2DiB6H6JwA8AWMLNMHvD-5xxSoK4aKAHnClMXZwI9k/exec") {
         const data = await postAPI({ action: "eliminar_registro", tabla, id });
         if (data.status !== "ok") {
           alert(data.message || "Error al eliminar");
@@ -631,7 +631,7 @@
       const icono = document.getElementById("iconoSync");
       icono.classList.add("fa-spin");
 
-      if (API_URL === "URL_DE_TU_APPS_SCRIPT") {
+      if (API_URL === "https://script.google.com/macros/s/AKfycbzbs22ZMC47lXKDFwbTEwplw2DiB6H6JwA8AWMLNMHvD-5xxSoK4aKAHnClMXZwI9k/exec") {
         if (!productos.length) {
           productos = [
             { ID_Producto: "P01", Rubro: "Pollería", Categoria: "Cajones de Pollo", Nombre: "Cajón de Pollo Óptimo 20kg", Calibre_Variante: "Calibre N7 (Grande / Trozar)", Precio: 56000, Stock_Disponible: 25, Activo: true },
@@ -830,7 +830,7 @@
       const estadoFinal = nuevoEstado || p.Estado;
       const repartidorFinal = nuevoRepartidor || p.Repartidor || "Repartidor 1";
 
-      if (API_URL !== "URL_DE_TU_APPS_SCRIPT") {
+      if (API_URL !== "https://script.google.com/macros/s/AKfycbzbs22ZMC47lXKDFwbTEwplw2DiB6H6JwA8AWMLNMHvD-5xxSoK4aKAHnClMXZwI9k/exec") {
         await postAPI({
           action: "cambiar_estado",
           idPedido,
@@ -911,7 +911,7 @@
         fechaEntrega
       };
 
-      if (API_URL !== "URL_DE_TU_APPS_SCRIPT") {
+      if (API_URL !== "https://script.google.com/macros/s/AKfycbzbs22ZMC47lXKDFwbTEwplw2DiB6H6JwA8AWMLNMHvD-5xxSoK4aKAHnClMXZwI9k/exec") {
         const data = await postAPI(payload);
         if (data.status === "error") {
           alert(data.message);
@@ -964,7 +964,7 @@
         imagenNombre: flyerNombre
       };
 
-      if (API_URL !== "URL_DE_TU_APPS_SCRIPT") {
+      if (API_URL !== "https://script.google.com/macros/s/AKfycbzbs22ZMC47lXKDFwbTEwplw2DiB6H6JwA8AWMLNMHvD-5xxSoK4aKAHnClMXZwI9k/exec") {
         const res = await postAPI(payload);
         if (res.urlImagen) urlImagenPromoSubida = res.urlImagen;
         alert("✅ Promoción publicada en el catálogo de los clientes y lista para difundir por WhatsApp.");
@@ -1100,7 +1100,7 @@
         alert("Completá comercio y WhatsApp.");
         return;
       }
-      if (API_URL !== "URL_DE_TU_APPS_SCRIPT") await postAPI(payload);
+      if (API_URL !== "https://script.google.com/macros/s/AKfycbzbs22ZMC47lXKDFwbTEwplw2DiB6H6JwA8AWMLNMHvD-5xxSoK4aKAHnClMXZwI9k/exec") await postAPI(payload);
       cerrarModal("modalCliente");
       cargarDatosAdmin();
     }
@@ -1172,7 +1172,7 @@
       const originalHTML = btn.innerHTML;
       btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i>`;
 
-      if (API_URL !== "URL_DE_TU_APPS_SCRIPT") {
+      if (API_URL !== "https://script.google.com/macros/s/AKfycbzbs22ZMC47lXKDFwbTEwplw2DiB6H6JwA8AWMLNMHvD-5xxSoK4aKAHnClMXZwI9k/exec") {
         await postAPI({
           action: "actualizar_precio_rapido",
           ID_Producto: idProd,
@@ -1214,7 +1214,7 @@
         alert("Completá nombre y calibre.");
         return;
       }
-      if (API_URL !== "URL_DE_TU_APPS_SCRIPT") await postAPI(payload);
+      if (API_URL !== "https://script.google.com/macros/s/AKfycbzbs22ZMC47lXKDFwbTEwplw2DiB6H6JwA8AWMLNMHvD-5xxSoK4aKAHnClMXZwI9k/exec") await postAPI(payload);
       cerrarModal("modalProducto");
       cargarDatosAdmin();
     }
@@ -1275,7 +1275,7 @@
         alert("Escribí la instrucción.");
         return;
       }
-      if (API_URL !== "URL_DE_TU_APPS_SCRIPT") await postAPI(payload);
+      if (API_URL !== "https://script.google.com/macros/s/AKfycbzbs22ZMC47lXKDFwbTEwplw2DiB6H6JwA8AWMLNMHvD-5xxSoK4aKAHnClMXZwI9k/exec") await postAPI(payload);
       cerrarModal("modalIA");
       cargarDatosAdmin();
     }

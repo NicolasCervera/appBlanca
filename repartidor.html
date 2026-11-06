@@ -163,7 +163,7 @@
 
   <script>
     // PEGÁ ACÁ TU URL DE APPS SCRIPT TERMINADA EN /exec
-    const API_URL = "https://script.google.com/macros/s/AKfycbw1Wy_NFUtmgqO_OmmstmCEXLMKtv9QX_tQpaDz0IiFJBwXf25IOz6mf1tvz98g1L7z/exec";
+    const API_URL = "https://script.google.com/macros/s/AKfycbzbs22ZMC47lXKDFwbTEwplw2DiB6H6JwA8AWMLNMHvD-5xxSoK4aKAHnClMXZwI9k/exec";
 
     let pedidosRuta = [];
     let metodoSeleccionado = "Efectivo";
@@ -208,7 +208,7 @@
       ico.classList.add("fa-spin");
       const chofer = document.getElementById("selChofer").value;
 
-      if (API_URL === "URL_DE_TU_APPS_SCRIPT") {
+      if (API_URL === "https://script.google.com/macros/s/AKfycbzbs22ZMC47lXKDFwbTEwplw2DiB6H6JwA8AWMLNMHvD-5xxSoK4aKAHnClMXZwI9k/exec") {
         // 3 paradas de ejemplo con coordenadas reales en General Güemes para probar el Mapa General
         pedidosRuta = [
           {
@@ -602,7 +602,7 @@
       btn.disabled = true;
       btn.innerText = "Guardando...";
 
-      if (API_URL !== "URL_DE_TU_APPS_SCRIPT") {
+      if (API_URL !== "https://script.google.com/macros/s/AKfycbzbs22ZMC47lXKDFwbTEwplw2DiB6H6JwA8AWMLNMHvD-5xxSoK4aKAHnClMXZwI9k/exec") {
         await fetch(API_URL, {
           method: "POST",
           headers: { "Content-Type": "text/plain;charset=utf-8" },

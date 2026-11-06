@@ -243,7 +243,7 @@
 
   <script>
     // PEGÁ ACÁ TU URL DE APPS SCRIPT TERMINADA EN /exec
-    const API_URL = "https://script.google.com/macros/s/AKfycbw1Wy_NFUtmgqO_OmmstmCEXLMKtv9QX_tQpaDz0IiFJBwXf25IOz6mf1tvz98g1L7z/exec";
+    const API_URL = "https://script.google.com/macros/s/AKfycbzbs22ZMC47lXKDFwbTEwplw2DiB6H6JwA8AWMLNMHvD-5xxSoK4aKAHnClMXZwI9k/exec";
 
     let catalogo = [];
     let carrito = {};
@@ -362,7 +362,7 @@
     }
 
     async function cargarCatalogo() {
-      if (API_URL === "URL_DE_TU_APPS_SCRIPT") {
+      if (API_URL === "https://script.google.com/macros/s/AKfycbzbs22ZMC47lXKDFwbTEwplw2DiB6H6JwA8AWMLNMHvD-5xxSoK4aKAHnClMXZwI9k/exec") {
         catalogo = [
           { ID_Producto: "P01", Rubro: "Pollería", Nombre: "Cajón de Pollo Óptimo 20kg", Calibre_Variante: "Calibre N7 (Grande / Trozar)", Precio: 56000, Stock_Disponible: 25 },
           { ID_Producto: "P02", Rubro: "Pollería", Nombre: "Cajón de Pollo 20kg", Calibre_Variante: "Calibre N8 (Rotisería / Spiedo)", Precio: 54000, Stock_Disponible: 18 },
@@ -372,7 +372,7 @@
           { ID_Producto: "D01", Rubro: "Distribuidora", Nombre: "Cajón de Filet de Merluza", Calibre_Variante: "Ideal Freezer x 10kg", Precio: 49000, Stock_Disponible: 10 }
         ];
         mostrarPromoBanner({
-          Titulo: "🇦🇷🐔 Precios Mundiales 🔥 Comprá más, pagá menos",
+          Titulo: "🐔 Precios Mundiales 🔥 Comprá más, pagá menos",
           Detalle: "Aprovechá el envío sumando Carne Molida a $10.900/kg o Matambre a $11.500/kg."
         });
         renderProductos();
@@ -573,7 +573,7 @@
 
       let idFinal = pedidoEnEdicion || "PED-" + Math.floor(1000 + Math.random() * 9000);
 
-      if (API_URL !== "URL_DE_TU_APPS_SCRIPT") {
+      if (API_URL !== "https://script.google.com/macros/s/AKfycbzbs22ZMC47lXKDFwbTEwplw2DiB6H6JwA8AWMLNMHvD-5xxSoK4aKAHnClMXZwI9k/exec") {
         try {
           const res = await fetch(API_URL, {
             method: "POST",
@@ -634,7 +634,7 @@
       const cont = document.getElementById("resultadoPedido");
       cont.innerHTML = `<p class="text-xs text-slate-500 text-center py-6">Buscando pedido...</p>`;
 
-      if (API_URL === "URL_DE_TU_APPS_SCRIPT") {
+      if (API_URL === "https://script.google.com/macros/s/AKfycbzbs22ZMC47lXKDFwbTEwplw2DiB6H6JwA8AWMLNMHvD-5xxSoK4aKAHnClMXZwI9k/exec") {
         cont.innerHTML = `<div class="bg-amber-50 border p-3 rounded-xl text-xs">Conectá tu URL_DE_TU_APPS_SCRIPT para buscar pedidos en vivo.</div>`;
         return;
       }
@@ -734,7 +734,7 @@
       input.value = "";
       chat.scrollTop = chat.scrollHeight;
 
-      if (API_URL === "URL_DE_TU_APPS_SCRIPT") {
+      if (API_URL === "https://script.google.com/macros/s/AKfycbzbs22ZMC47lXKDFwbTEwplw2DiB6H6JwA8AWMLNMHvD-5xxSoK4aKAHnClMXZwI9k/exec") {
         setTimeout(() => {
           chat.innerHTML += `<div class="bg-slate-100 text-slate-800 p-2.5 rounded-2xl rounded-tl-none max-w-[85%]">¡Hola! Esta semana tenemos Cajón de Pollo N7 a $56.000, Carne Molida a $10.900/kg y Matambre a $11.500/kg.</div>`;
           chat.scrollTop = chat.scrollHeight;
